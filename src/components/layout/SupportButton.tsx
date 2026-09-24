@@ -21,8 +21,11 @@ export function SupportButton() {
           a later build. For now, reach the team directly:
         </p>
         <div className="mt-4 flex flex-col gap-2">
-          <Button variant="outline" size="sm" className="justify-start" onClick={() => (window.location.href = "mailto:support@ticketyangu.com")}>
-            Email support@ticketyangu.com
+          <Button variant="outline" size="sm" className="justify-start" onClick={() => (window.location.href = "mailto:afriticket@gmail.com")}>
+            Email afriticket@gmail.com
+          </Button>
+          <Button variant="outline" size="sm" className="justify-start" onClick={() => (window.location.href = "tel:0115577319")}>
+            Call 0115 577 319
           </Button>
         </div>
       </Dialog>

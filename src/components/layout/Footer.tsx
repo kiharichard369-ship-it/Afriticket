@@ -36,7 +36,8 @@ export function Footer() {
           <h3 className="text-sm font-semibold text-ink dark:text-ink-dark">Get help</h3>
           <ul className="mt-3 space-y-2 text-sm text-ink-soft dark:text-ink-soft-dark">
             <li><a href="/help" className="hover:text-ink dark:hover:text-ink-dark">Support centre</a></li>
-            <li><a href="mailto:support@ticketyangu.com" className="hover:text-ink dark:hover:text-ink-dark">support@ticketyangu.com</a></li>
+            <li><a href="mailto:afriticket@gmail.com" className="hover:text-ink dark:hover:text-ink-dark">afriticket@gmail.com</a></li>
+            <li><a href="tel:0115577319" className="hover:text-ink dark:hover:text-ink-dark">0115 577 319</a></li>
           </ul>
           <div className="mt-4 flex items-center gap-3 text-ink-soft dark:text-ink-soft-dark">
             <a href="/social/facebook" aria-label="Ticketyangu on Facebook" className="hover:text-ink dark:hover:text-ink-dark"><Globe className="h-5 w-5" /></a>
