@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Public+Sans:wght@400;500;600;700&display=swap");
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-sans: "Public Sans", system-ui, sans-serif;
+
+  --color-paper: #f6f1e7;
+  --color-paper-raised: #fcf9f2;
+  --color-ink: #201a12;
+  --color-ink-soft: #55493a;
+  --color-ink-faint: #6e6049;
+  --color-border-warm: #ded2b8;
+
+  --color-saffron: #e2a335;
+  --color-saffron-dark: #b87f1f;
+  /* A separate, darker token for TEXT set against light paper backgrounds.
+     saffron-dark itself only reaches 3.06:1 against --color-paper, which
+     fails WCAG AA (4.5:1) for normal-size text — it stays as-is for
+     backgrounds/borders/focus rings, where that's not the applicable
+     rule, and where darkening it further would break the saffron-ink
+     button-hover text on top of it (checked: drops to 2.48:1). Computed
+     with a real luminance calculation, not eyeballed — see the note in
+     supabase/ACCESSIBILITY.md. */
+  --color-saffron-text: #8c5f13;
+  --color-saffron-ink: #3a2a06;
+
+  --color-rust: #a6432b;
+  --color-sage: #5c6b47;
+
+  --color-paper-dark: #17130d;
+  --color-surface-dark: #221c13;
+  --color-ink-dark: #f2e9d8;
+  --color-ink-soft-dark: #c9b99a;
+  --color-border-dark: #3a3021;
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, -4%) scale(1.05); }
+  66% { transform: translate(-3%, 3%) scale(0.97); }
+}
+
+@keyframes shimmer {
+  from { background-position: 0% 0; }
+  to { background-position: -200% 0; }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out both;
+}
+
+.animate-blob {
+  animation: blob-float 14s ease-in-out infinite;
+}
+
+.hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
+  background-color: var(--color-paper-dark);
+  color: var(--color-ink-dark);
+}
+
+/* Visible, deliberate focus ring instead of relying on default outline */
+:focus-visible {
+  outline: 2px solid var(--color-saffron-dark);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background-color: var(--color-saffron);
+  color: var(--color-saffron-ink);
+}
