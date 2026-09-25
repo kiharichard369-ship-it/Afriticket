@@ -13,7 +13,7 @@ export function DiscoveryPage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden border-b border-border-warm bg-paper-raised dark:border-border-dark dark:bg-surface-dark">
+      <section className="site-hero relative overflow-hidden border-b border-border-warm bg-paper-raised dark:border-border-dark dark:bg-surface-dark">
         <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-blob rounded-full bg-saffron/30 blur-3xl" />
         <div className="pointer-events-none absolute -right-16 top-10 h-64 w-64 animate-blob rounded-full bg-rust/20 blur-3xl [animation-delay:3s]" />
         <div className="pointer-events-none absolute bottom-0 left-1/3 h-56 w-56 animate-blob rounded-full bg-sage/25 blur-3xl [animation-delay:6s]" />
@@ -42,7 +42,7 @@ export function DiscoveryPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-8">
+      <section className="site-texture mx-auto max-w-6xl rounded-t-3xl px-6 py-8">
         <FiltersBar filters={filters} onChange={updateFilters} onClear={clearFilters} autoFocusSearch={autoFocusSearch} />
 
         <div className="mt-8">
