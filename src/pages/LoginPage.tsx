@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabaseClient";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -14,16 +15,49 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? "/";
+  const explicitFrom = (location.state as { from?: string } | null)?.from;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     const { error } = await signIn(email, password);
+    if (error) {
+      setError(error);
+      setSubmitting(false);
+      return;
+    }
+
+    // If the person got sent here for a specific reason (e.g. "log in to
+    // apply", "log in to see my tickets"), always honor that — don't
+    // second-guess it with a role-based redirect below.
+    if (explicitFrom) {
+      navigate(explicitFrom, { replace: true });
+      return;
+    }
+
+    // Otherwise, take each role to the page they actually want: a Super
+    // User to moderation, an organiser to their dashboard, everyone else
+    // to the homepage. Queried directly here (rather than waiting on
+    // useOrganisation/usePlatformStaff's own effects) so the redirect
+    // happens in the same action as a successful login, not a beat later.
+    let destination = "/";
+    if (supabase) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data: staffRow } = await supabase.from("platform_staff").select("user_id").eq("user_id", user.id).maybeSingle();
+        if (staffRow) {
+          destination = "/admin/moderation";
+        } else {
+          const { data: memberRow } = await supabase.from("organisation_members").select("organisation_id").eq("user_id", user.id).maybeSingle();
+          if (memberRow) destination = "/organiser/dashboard";
+        }
+      }
+    }
     setSubmitting(false);
-    if (error) setError(error);
-    else navigate(redirectTo, { replace: true });
+    navigate(destination, { replace: true });
   }
 
   return (

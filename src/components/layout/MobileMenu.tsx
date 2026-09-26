@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { Dialog } from "../ui/Dialog";
 import { useAuth } from "../../context/AuthContext";
 import { useOrganisation } from "../../hooks/useOrganisation";
+import { usePlatformStaff } from "../../hooks/usePlatformStaff";
 
 interface MobileMenuProps {
   open: boolean;
@@ -12,6 +13,7 @@ interface MobileMenuProps {
 export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
   const { user, signOut } = useAuth();
   const { membership } = useOrganisation();
+  const { isStaff } = usePlatformStaff();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Menu" side="right">
@@ -42,6 +44,15 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
             Organiser dashboard
           </NavLink>
         )}
+        {isStaff && (
+          <NavLink
+            to="/admin/moderation"
+            onClick={() => onOpenChange(false)}
+            className="rounded-lg px-3 py-3 text-base font-medium text-ink hover:bg-ink/5 dark:text-ink-dark dark:hover:bg-white/10"
+          >
+            Moderation (Super User)
+          </NavLink>
+        )}
         {user && (
           <NavLink
             to="/my-tickets"
@@ -60,13 +71,13 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
             Account settings
           </NavLink>
         )}
-        <a
-          href="/organiser/apply"
+        <NavLink
+          to="/organiser/apply"
           onClick={() => onOpenChange(false)}
           className="rounded-lg px-3 py-3 text-base font-medium text-ink hover:bg-ink/5 dark:text-ink-dark dark:hover:bg-white/10"
         >
           Sell tickets
-        </a>
+        </NavLink>
         {user ? (
           <button
             onClick={() => {

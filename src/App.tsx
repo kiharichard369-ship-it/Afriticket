@@ -3,6 +3,8 @@ import { Layout } from "./components/layout/Layout";
 import { DiscoveryPage } from "./pages/DiscoveryPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { AboutPage } from "./pages/AboutPage";
+import { HelpPage } from "./pages/HelpPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
@@ -22,6 +24,8 @@ export default function App() {
         <Route index element={<DiscoveryPage />} />
         <Route path="events/:slug" element={<EventDetailPage />} />
         <Route path="calendar" element={<CalendarPage />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="help" element={<HelpPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignUpPage />} />
         <Route path="organiser/apply" element={<OrganiserApplyPage />} />

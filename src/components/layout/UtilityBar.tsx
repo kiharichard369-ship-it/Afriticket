@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -11,13 +12,13 @@ export function UtilityBar() {
           Browsing events near Nakuru — change town in Filters
         </span>
         <div className="flex items-center gap-4">
-          <a href="/help" className="text-paper/80 hover:text-paper">
+          <Link to="/help" className="text-paper/80 hover:text-paper">
             Help
-          </a>
+          </Link>
           {!user && (
-            <a href="/login" className="text-paper/80 hover:text-paper">
+            <Link to="/login" className="text-paper/80 hover:text-paper">
               Log in
-            </a>
+            </Link>
           )}
         </div>
       </div>

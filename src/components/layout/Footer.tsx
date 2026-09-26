@@ -20,30 +20,33 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-ink-soft dark:text-ink-soft-dark">
             <li><Link to="/" className="hover:text-ink dark:hover:text-ink-dark">Browse events</Link></li>
             <li><Link to="/calendar" className="hover:text-ink dark:hover:text-ink-dark">Calendar</Link></li>
-            <li><a href="/about" className="hover:text-ink dark:hover:text-ink-dark">About Ticketyangu</a></li>
+            <li><Link to="/about" className="hover:text-ink dark:hover:text-ink-dark">About Ticketyangu</Link></li>
           </ul>
         </div>
 
         <div>
           <h3 className="text-sm font-semibold text-ink dark:text-ink-dark">Organisers</h3>
           <ul className="mt-3 space-y-2 text-sm text-ink-soft dark:text-ink-soft-dark">
-            <li><a href="/organiser/apply" className="hover:text-ink dark:hover:text-ink-dark">Start selling</a></li>
-            <li><a href="/organiser/login" className="hover:text-ink dark:hover:text-ink-dark">Organiser log in</a></li>
+            <li><Link to="/organiser/apply" className="hover:text-ink dark:hover:text-ink-dark">Start selling</Link></li>
+            <li><Link to="/login" className="hover:text-ink dark:hover:text-ink-dark">Organiser log in</Link></li>
           </ul>
         </div>
 
         <div>
           <h3 className="text-sm font-semibold text-ink dark:text-ink-dark">Get help</h3>
           <ul className="mt-3 space-y-2 text-sm text-ink-soft dark:text-ink-soft-dark">
-            <li><a href="/help" className="hover:text-ink dark:hover:text-ink-dark">Support centre</a></li>
+            <li><Link to="/help" className="hover:text-ink dark:hover:text-ink-dark">Support centre</Link></li>
             <li><a href="mailto:afriticket@gmail.com" className="hover:text-ink dark:hover:text-ink-dark">afriticket@gmail.com</a></li>
             <li><a href="tel:0115577319" className="hover:text-ink dark:hover:text-ink-dark">0115 577 319</a></li>
           </ul>
-          <div className="mt-4 flex items-center gap-3 text-ink-soft dark:text-ink-soft-dark">
-            <a href="/social/facebook" aria-label="Ticketyangu on Facebook" className="hover:text-ink dark:hover:text-ink-dark"><Globe className="h-5 w-5" /></a>
-            <a href="/social/instagram" aria-label="Ticketyangu on Instagram" className="hover:text-ink dark:hover:text-ink-dark"><Camera className="h-5 w-5" /></a>
-            <a href="/social/twitter" aria-label="Ticketyangu on X" className="hover:text-ink dark:hover:text-ink-dark"><Hash className="h-5 w-5" /></a>
-            <a href="/social/whatsapp" aria-label="Chat with Ticketyangu on WhatsApp" className="hover:text-ink dark:hover:text-ink-dark"><MessageCircle className="h-5 w-5" /></a>
+          {/* Real social accounts aren't set up yet — these are deliberately
+              inert (not links) rather than pointing somewhere that 404s.
+              Swap in real hrefs here once the accounts exist. */}
+          <div className="mt-4 flex items-center gap-3 text-ink-faint">
+            <span title="Facebook — coming soon" aria-label="Facebook (coming soon)" className="cursor-not-allowed"><Globe className="h-5 w-5" /></span>
+            <span title="Instagram — coming soon" aria-label="Instagram (coming soon)" className="cursor-not-allowed"><Camera className="h-5 w-5" /></span>
+            <span title="X (Twitter) — coming soon" aria-label="X (coming soon)" className="cursor-not-allowed"><Hash className="h-5 w-5" /></span>
+            <span title="WhatsApp — coming soon" aria-label="WhatsApp (coming soon)" className="cursor-not-allowed"><MessageCircle className="h-5 w-5" /></span>
           </div>
         </div>
       </div>

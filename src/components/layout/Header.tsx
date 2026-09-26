@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { LayoutDashboard, LogOut, Menu, Moon, Search, Sun, Ticket } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Moon, Search, ShieldCheck, Sun, Ticket } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../context/AuthContext";
 import { useOrganisation } from "../../hooks/useOrganisation";
+import { usePlatformStaff } from "../../hooks/usePlatformStaff";
 import { buttonVariants } from "../ui/Button";
 import { MobileMenu } from "./MobileMenu";
 
@@ -16,6 +17,7 @@ export function Header() {
   const { theme, toggle } = useTheme();
   const { user, signOut } = useAuth();
   const { membership } = useOrganisation();
+  const { isStaff } = usePlatformStaff();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -55,9 +57,9 @@ export function Header() {
           >
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-          <a href="/organiser/apply" className={buttonVariants({ variant: "outline", size: "sm", className: "hidden sm:inline-flex" })}>
+          <Link to="/organiser/apply" className={buttonVariants({ variant: "outline", size: "sm", className: "hidden sm:inline-flex" })}>
             Sell tickets
-          </a>
+          </Link>
           {user && (
             <Link
               to="/my-tickets"
@@ -74,6 +76,16 @@ export function Header() {
               className="hidden rounded-md p-2 text-ink-soft hover:bg-ink/5 dark:text-ink-soft-dark dark:hover:bg-white/10 sm:inline-flex"
             >
               <LayoutDashboard className="h-5 w-5" />
+            </Link>
+          )}
+          {isStaff && (
+            <Link
+              to="/admin/moderation"
+              aria-label="Moderation (Super User)"
+              title="Moderation"
+              className="hidden rounded-md p-2 text-ink-soft hover:bg-ink/5 dark:text-ink-soft-dark dark:hover:bg-white/10 sm:inline-flex"
+            >
+              <ShieldCheck className="h-5 w-5" />
             </Link>
           )}
           {user ? (

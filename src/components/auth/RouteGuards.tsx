@@ -32,6 +32,20 @@ export function RequirePlatformStaff({ children }: { children: ReactNode }) {
   const location = useLocation();
   if (authLoading || loading) return <Centered>Loading…</Centered>;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  if (!isStaff) return <Navigate to="/" replace />;
+  if (!isStaff) {
+    // Deliberately NOT a silent redirect to "/" — that looks like nothing
+    // happened and gives no way to tell "you're not staff" apart from
+    // "the app is broken". If you expected access, confirm your account
+    // has a row in the platform_staff table (see the handover guide).
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-lg flex-col items-center justify-center gap-2 px-6 text-center">
+        <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">Staff access required</h1>
+        <p className="text-ink-soft dark:text-ink-soft-dark">
+          This account isn't set up as a Super User yet. If you expected access, ask whoever
+          manages the Supabase project to add your account to the <code>platform_staff</code> table.
+        </p>
+      </div>
+    );
+  }
   return <>{children}</>;
 }
