@@ -1,4 +1,4 @@
--- Ticketyangu — 0018: notification delivery worker scaffolding
+-- Afriticket — 0018: notification delivery worker scaffolding
 --
 -- The worker keeps status='queued' while a short lease is active so existing
 -- clients and the backlog view remain backwards-compatible. locked_until and

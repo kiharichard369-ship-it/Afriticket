@@ -1,4 +1,4 @@
-# Ticketyangu — Edge Functions
+# Afriticket — Edge Functions
 
 Three functions, all Deno. None is deployed by this codebase — that
 happens once via the Supabase CLI, from your machine, against your project.

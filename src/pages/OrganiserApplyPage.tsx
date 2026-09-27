@@ -41,7 +41,7 @@ export function OrganiserApplyPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-lg px-6 py-16 text-center">
-        <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">Sell tickets on Ticketyangu</h1>
+        <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">Sell tickets on Afriticket</h1>
         <p className="mt-2 text-ink-soft dark:text-ink-soft-dark">Log in or create an account first, then come back here to apply.</p>
         <Button className="mt-6" onClick={() => navigate("/login", { state: { from: "/organiser/apply" } })}>
           Log in to continue

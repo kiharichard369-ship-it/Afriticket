@@ -1,4 +1,4 @@
--- Ticketyangu — 0009: event status transition guard
+-- Afriticket — 0009: event status transition guard
 --
 -- The "organisers update own" RLS policy from migration 0007 lets an
 -- organiser UPDATE any column on their own event, including status — which

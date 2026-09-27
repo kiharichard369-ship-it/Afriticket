@@ -1,5 +1,5 @@
 // ALLOWED_ORIGIN should be set to your deployed frontend's exact origin in
-// production (supabase secrets set ALLOWED_ORIGIN=https://ticketyangu.com).
+// production (supabase secrets set ALLOWED_ORIGIN=https://afriticket.com).
 // Falling back to "*" only when it's unset keeps local development working
 // without forcing every contributor to configure a secret just to run
 // `supabase functions serve`, but shipping to production with it unset

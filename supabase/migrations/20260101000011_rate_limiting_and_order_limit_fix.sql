@@ -1,4 +1,4 @@
--- Ticketyangu — 0011: close a real business-logic gap + add basic rate limiting
+-- Afriticket — 0011: close a real business-logic gap + add basic rate limiting
 --
 -- Bug found by testing: create_ticket_hold checked per_order_limit against
 -- the quantity in THIS call only. Nothing stopped a session from calling it

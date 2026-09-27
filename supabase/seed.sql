@@ -1,4 +1,4 @@
--- Ticketyangu — demo seed data (non-sensitive, safe for any environment)
+-- Afriticket — demo seed data (non-sensitive, safe for any environment)
 -- Run this after all migrations. It creates categories, one demo
 -- organisation, venues, and a couple of published events with ticket types,
 -- so the Phase 2 SupabaseEventsRepository has something real to query.
@@ -15,7 +15,7 @@ insert into public.categories (slug, name, sort_order) values
 on conflict (slug) do nothing;
 
 insert into public.organisations (id, name, slug, trading_name, support_email, is_approved)
-values ('00000000-0000-0000-0000-000000000001', 'Mirie Technologies Events', 'mirie-events', 'Ticketyangu Demo Organiser', 'events@mirie.co.ke', true)
+values ('00000000-0000-0000-0000-000000000001', 'Mirie Technologies Events', 'mirie-events', 'Afriticket Demo Organiser', 'events@mirie.co.ke', true)
 on conflict (id) do nothing;
 
 insert into public.venues (id, organisation_id, name, town, address) values

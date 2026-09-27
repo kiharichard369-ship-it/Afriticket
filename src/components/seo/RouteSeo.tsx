@@ -3,24 +3,24 @@ import { SeoMetadata } from "./SeoMetadata";
 
 const PUBLIC_METADATA: Record<string, { title: string; description: string }> = {
   "/": {
-    title: "Ticketyangu — Find events across Kenya",
+    title: "Afriticket — Find events across Kenya",
     description: "Discover and book concerts, comedy, sport, theatre, and community events across Kenya, town by town.",
   },
   "/calendar": {
-    title: "Events calendar — Ticketyangu",
+    title: "Events calendar — Afriticket",
     description: "Browse upcoming events across Kenya by month and day, then open an event to view tickets and venue details.",
   },
   "/about": {
-    title: "About Ticketyangu — Kenya event discovery and ticketing",
-    description: "Learn how Ticketyangu helps people find and book concerts, markets, sport, theatre, and community gatherings across Kenya.",
+    title: "About Afriticket — Kenya event discovery and ticketing",
+    description: "Learn how Afriticket helps people find and book concerts, markets, sport, theatre, and community gatherings across Kenya.",
   },
   "/help": {
-    title: "Help centre — Ticketyangu",
-    description: "Find answers about buying tickets, finding your QR ticket, refunds, organising events, and event check-in on Ticketyangu.",
+    title: "Help centre — Afriticket",
+    description: "Find answers about buying tickets, finding your QR ticket, refunds, organising events, and event check-in on Afriticket.",
   },
   "/organiser/apply": {
-    title: "Sell tickets on Ticketyangu",
-    description: "Apply to list and sell tickets for your next event on Ticketyangu, Kenya's town-by-town event discovery platform.",
+    title: "Sell tickets on Afriticket",
+    description: "Apply to list and sell tickets for your next event on Afriticket, Kenya's town-by-town event discovery platform.",
   },
 };
 
@@ -49,8 +49,8 @@ export function RouteSeo() {
   const noIndex = NO_INDEX_PATHS.has(normalizedPath) || normalizedPath.startsWith("/organiser/events/");
   return (
     <SeoMetadata
-      title={normalizedPath === "/404" ? "Page not found — Ticketyangu" : "Ticketyangu"}
-      description="Find and book events across Kenya with Ticketyangu."
+      title={normalizedPath === "/404" ? "Page not found — Afriticket" : "Afriticket"}
+      description="Find and book events across Kenya with Afriticket."
       noIndex={noIndex || normalizedPath !== "/"}
     />
   );

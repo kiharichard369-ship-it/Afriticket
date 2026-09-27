@@ -1,4 +1,4 @@
--- Ticketyangu — 0004: orders and payments
+-- Afriticket — 0004: orders and payments
 
 create type order_status as enum (
   'pending', 'awaiting_payment', 'paid', 'cancelled', 'refund_requested', 'refunded', 'failed'

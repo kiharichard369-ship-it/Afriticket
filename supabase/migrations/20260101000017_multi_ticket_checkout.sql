@@ -1,4 +1,4 @@
--- Ticketyangu — 0017: multi-ticket-type checkout
+-- Afriticket — 0017: multi-ticket-type checkout
 --
 -- This migration is additive/forward-only. Existing one-ticket checkout RPCs and
 -- orders remain valid; the new RPCs add an order_holds join table so one order

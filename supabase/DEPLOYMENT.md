@@ -1,4 +1,4 @@
-# Ticketyangu — Release and Handover
+# Afriticket — Release and Handover
 
 ## Staging vs. production
 

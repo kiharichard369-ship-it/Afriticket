@@ -6,8 +6,8 @@ export function Footer() {
     <footer className="border-t border-border-warm bg-paper-raised dark:border-border-dark dark:bg-surface-dark">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 sm:grid-cols-2 md:grid-cols-4">
         <div>
-          <Link to="/" className="font-display text-xl font-semibold text-ink dark:text-ink-dark">
-            Ticket<span className="text-saffron-text dark:text-saffron">yangu</span>
+          <Link to="/" className="inline-flex items-center text-ink dark:text-ink-dark">
+            <img src="/afriticket-logo.jpeg" alt="Afriticket" className="h-10 w-auto max-w-[190px] rounded-md bg-black object-contain" />
           </Link>
           <p className="mt-3 max-w-xs text-sm text-ink-soft dark:text-ink-soft-dark">
             Find and book events across Kenya — concerts, markets, sport, theatre, and community
@@ -20,7 +20,7 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-ink-soft dark:text-ink-soft-dark">
             <li><Link to="/" className="hover:text-ink dark:hover:text-ink-dark">Browse events</Link></li>
             <li><Link to="/calendar" className="hover:text-ink dark:hover:text-ink-dark">Calendar</Link></li>
-            <li><Link to="/about" className="hover:text-ink dark:hover:text-ink-dark">About Ticketyangu</Link></li>
+            <li><Link to="/about" className="hover:text-ink dark:hover:text-ink-dark">About Afriticket</Link></li>
           </ul>
         </div>
 
@@ -51,7 +51,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-border-warm px-6 py-4 text-center text-xs text-ink-faint dark:border-border-dark">
-        © {new Date().getFullYear()} Ticketyangu, a Mirie Technologies product. All rights reserved.
+        © {new Date().getFullYear()} Afriticket, an Africa Media Group product. All rights reserved.
       </div>
     </footer>
   );

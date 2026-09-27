@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
-const STORAGE_KEY = "ticketyangu:theme";
+const STORAGE_KEY = "afriticket:theme";
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "light";

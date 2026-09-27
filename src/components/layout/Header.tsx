@@ -23,8 +23,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-border-warm bg-paper/95 backdrop-blur dark:border-border-dark dark:bg-paper-dark/95">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
-        <Link to="/" className="font-display text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">
-          Ticket<span className="text-saffron-text dark:text-saffron">yangu</span>
+        <Link to="/" className="flex items-center gap-2 text-ink dark:text-ink-dark">
+          <img src="/afriticket-logo.jpeg" alt="Afriticket" className="h-9 w-auto max-w-[180px] rounded-md bg-black object-contain" />
+          <span className="sr-only">Afriticket</span>
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">

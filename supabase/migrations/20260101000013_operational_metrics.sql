@@ -1,4 +1,4 @@
--- Ticketyangu — 0013: operational metrics views
+-- Afriticket — 0013: operational metrics views
 --
 -- Plain views, not a metrics pipeline — point Grafana/Metabase/a scheduled
 -- Edge Function at these, or just run them by hand during an incident.

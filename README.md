@@ -1,4 +1,4 @@
-# Ticketyangu
+# Afriticket
 
 A Kenya-focused event discovery and ticket-booking platform. Built by Mirie
 Technologies, following the four-phase build plan (Phase 1: public

@@ -1,4 +1,4 @@
-# Ticketyangu — Security Review (OWASP API Security Top 10)
+# Afriticket — Security Review (OWASP API Security Top 10)
 
 This is a walkthrough of the actual schema, RLS policies, and functions
 against each OWASP API Security Top 10 (2023) category — not a generic

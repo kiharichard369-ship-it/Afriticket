@@ -1,4 +1,4 @@
--- Ticketyangu — 0016: storage bucket for the landing-page wallpaper
+-- Afriticket — 0016: storage bucket for the landing-page wallpaper
 --
 -- HONESTY NOTE, read before running: every other migration in this project
 -- was tested against a real local Postgres before shipping. This one

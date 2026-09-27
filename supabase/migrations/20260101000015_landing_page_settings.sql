@@ -1,4 +1,4 @@
--- Ticketyangu — 0015: landing page settings, featured events, newsletter
+-- Afriticket — 0015: landing page settings, featured events, newsletter
 --
 -- site_settings is a deliberate singleton (one row, fixed id) rather than a
 -- generic key-value table — the landing page needs to read all of it in one

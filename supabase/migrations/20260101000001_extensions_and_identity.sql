@@ -1,4 +1,4 @@
--- Ticketyangu — 0001: extensions and identity
+-- Afriticket — 0001: extensions and identity
 -- Users live in Supabase's own auth.users table. Everything here extends it.
 
 create extension if not exists "pgcrypto";

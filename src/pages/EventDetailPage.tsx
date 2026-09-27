@@ -29,8 +29,8 @@ export function EventDetailPage() {
     return (
       <>
         <SeoMetadata
-          title="Event details — Ticketyangu"
-          description="View event details, venue information, and ticket options on Ticketyangu."
+          title="Event details — Afriticket"
+          description="View event details, venue information, and ticket options on Afriticket."
           canonicalPath={slug ? `/events/${slug}` : "/"}
         />
         <div className="mx-auto max-w-4xl space-y-4 px-6 py-10">
@@ -47,8 +47,8 @@ export function EventDetailPage() {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
         <SeoMetadata
-          title="Event not found — Ticketyangu"
-          description="This event is no longer available. Browse current events across Kenya on Ticketyangu."
+          title="Event not found — Afriticket"
+          description="This event is no longer available. Browse current events across Kenya on Afriticket."
           canonicalPath="/"
           noIndex
         />
@@ -65,7 +65,7 @@ export function EventDetailPage() {
   return (
     <article>
       <SeoMetadata
-        title={`${event.title} — Ticketyangu`}
+        title={`${event.title} — Afriticket`}
         description={`${event.title} in ${event.venue.town}: ${event.description}`}
         canonicalPath={`/events/${event.slug}`}
         imageUrl={event.coverImageUrl}

@@ -9,8 +9,8 @@ type SeoMetadataProps = {
   noIndex?: boolean;
 };
 
-const SITE_NAME = "Ticketyangu";
-const DEFAULT_IMAGE_ALT = "Ticketyangu events across Kenya";
+const SITE_NAME = "Afriticket";
+const DEFAULT_IMAGE_ALT = "Afriticket events across Kenya";
 
 function absoluteUrl(value?: string) {
   if (!value) return undefined;

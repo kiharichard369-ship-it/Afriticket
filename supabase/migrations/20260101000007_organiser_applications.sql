@@ -1,4 +1,4 @@
--- Ticketyangu — 0007: organiser applications, moderation, and the write
+-- Afriticket — 0007: organiser applications, moderation, and the write
 -- policies the organiser dashboard needs (Phase 1 only granted organisers
 -- read access to their own catalog rows; this adds insert/update).
 

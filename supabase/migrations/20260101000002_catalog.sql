@@ -1,4 +1,4 @@
--- Ticketyangu — 0002: catalog
+-- Afriticket — 0002: catalog
 
 create table public.categories (
   id uuid primary key default gen_random_uuid(),

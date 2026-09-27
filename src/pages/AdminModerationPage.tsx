@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
@@ -7,6 +7,7 @@ import { Badge } from "../components/ui/Badge";
 import { formatEventDate } from "../lib/date";
 import { formatKes } from "../lib/currency";
 import type { EventRow, OrganiserApplicationRow } from "../types/database";
+import { siteSettingsRepository } from "../repositories/siteSettingsRepository";
 
 interface RefundRow {
   id: string;
@@ -22,6 +23,10 @@ export function AdminModerationPage() {
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [refunds, setRefunds] = useState<RefundRow[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
+  const [wallpaperError, setWallpaperError] = useState<string | null>(null);
+  const [wallpaperMessage, setWallpaperMessage] = useState<string | null>(null);
+  const wallpaperInputRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
     if (!supabase) return;
@@ -33,6 +38,38 @@ export function AdminModerationPage() {
     setApplications((apps as OrganiserApplicationRow[]) ?? []);
     setEvents((evts as EventRow[]) ?? []);
     setRefunds((rfds as unknown as RefundRow[]) ?? []);
+    const settings = await siteSettingsRepository.getPublic().catch(() => null);
+    setWallpaperUrl(settings?.wallpaperUrl ?? null);
+  }
+  async function uploadWallpaper(file: File) {
+    if (!user) return;
+    setBusyId("wallpaper");
+    setWallpaperError(null);
+    setWallpaperMessage(null);
+    try {
+      const settings = await siteSettingsRepository.uploadWallpaper(file, user.id);
+      setWallpaperUrl(settings.wallpaperUrl);
+      setWallpaperMessage("Landing-page theme image updated.");
+    } catch (uploadError) {
+      setWallpaperError((uploadError as Error).message);
+    } finally {
+      setBusyId(null);
+      if (wallpaperInputRef.current) wallpaperInputRef.current.value = "";
+    }
+  }
+  async function clearWallpaper() {
+    setBusyId("wallpaper");
+    setWallpaperError(null);
+    setWallpaperMessage(null);
+    try {
+      const settings = await siteSettingsRepository.clearWallpaper();
+      setWallpaperUrl(settings.wallpaperUrl);
+      setWallpaperMessage("Landing-page theme image cleared.");
+    } catch (clearError) {
+      setWallpaperError((clearError as Error).message);
+    } finally {
+      setBusyId(null);
+    }
   }
 
   useEffect(() => {
@@ -83,6 +120,35 @@ export function AdminModerationPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">Moderation queue</h1>
+      <Card className="mt-6 overflow-hidden p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl text-ink dark:text-ink-dark">Landing-page theme image</h2>
+            <p className="mt-1 max-w-2xl text-sm text-ink-soft dark:text-ink-soft-dark">
+              Upload a wide, text-free image for the public Afriticket landing hero. It is stored in the site-assets bucket and shown publicly with a readability overlay.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" disabled={busyId === "wallpaper"} onClick={() => wallpaperInputRef.current?.click()}>
+              {busyId === "wallpaper" ? "Uploading…" : "Choose image"}
+            </Button>
+            {wallpaperUrl && <Button size="sm" variant="outline" disabled={busyId === "wallpaper"} onClick={clearWallpaper}>Use default</Button>}
+          </div>
+        </div>
+        <input
+          ref={wallpaperInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void uploadWallpaper(file);
+          }}
+        />
+        {wallpaperUrl && <img src={wallpaperUrl} alt="Current landing-page theme" className="mt-4 aspect-[21/7] w-full rounded-lg object-cover" />}
+        {wallpaperMessage && <p className="mt-3 text-sm text-sage" role="status">{wallpaperMessage}</p>}
+        {wallpaperError && <p className="mt-3 text-sm text-rust" role="alert">{wallpaperError}</p>}
+      </Card>
 
       <section className="mt-8">
         <h2 className="font-display text-xl text-ink dark:text-ink-dark">Organiser applications</h2>

@@ -33,7 +33,7 @@ export function AccountSettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "ticketyangu-my-data.json";
+    a.download = "afriticket-my-data.json";
     a.click();
     URL.revokeObjectURL(url);
   }

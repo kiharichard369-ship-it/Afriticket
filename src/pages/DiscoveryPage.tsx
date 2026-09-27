@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useEventDiscovery } from "../hooks/useEventDiscovery";
 import { FiltersBar } from "../components/events/FiltersBar";
@@ -5,15 +6,24 @@ import { EventGrid } from "../components/events/EventGrid";
 import { LoadMore } from "../components/events/LoadMore";
 import { EmptyState, ErrorState } from "../components/ui/EmptyState";
 import { CalendarClock } from "lucide-react";
+import { siteSettingsRepository } from "../repositories/siteSettingsRepository";
 
 export function DiscoveryPage() {
   const { filters, updateFilters, clearFilters, events, status, hasMore, loadMore, totalItems } = useEventDiscovery();
   const [searchParams] = useSearchParams();
   const autoFocusSearch = searchParams.get("focus") === "search";
+  const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
+  useEffect(() => {
+    siteSettingsRepository.getPublic().then((settings) => setWallpaperUrl(settings.wallpaperUrl)).catch(() => undefined);
+  }, []);
 
   return (
     <div>
-      <section className="relative overflow-hidden border-b border-border-warm bg-paper-raised dark:border-border-dark dark:bg-surface-dark">
+      <section
+        className="relative overflow-hidden border-b border-border-warm bg-paper-raised bg-cover bg-center dark:border-border-dark dark:bg-surface-dark"
+        style={{ backgroundImage: `url(${wallpaperUrl ?? "/backgrounds/afriticket-hero.jpg"})` }}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-paper-raised/80 dark:bg-surface-dark/80" />
         <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-blob rounded-full bg-saffron/30 blur-3xl" />
         <div className="pointer-events-none absolute -right-16 top-10 h-64 w-64 animate-blob rounded-full bg-rust/20 blur-3xl [animation-delay:3s]" />
         <div className="pointer-events-none absolute bottom-0 left-1/3 h-56 w-56 animate-blob rounded-full bg-sage/25 blur-3xl [animation-delay:6s]" />
@@ -42,10 +52,12 @@ export function DiscoveryPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-8">
-        <FiltersBar filters={filters} onChange={updateFilters} onClear={clearFilters} autoFocusSearch={autoFocusSearch} />
+      <section className="relative overflow-hidden border-b border-border-warm dark:border-border-dark">
+        <div className="pointer-events-none absolute inset-0 bg-[url('/backgrounds/afriticket-events.jpg')] bg-cover bg-center opacity-[0.08] dark:opacity-[0.12]" />
+        <div className="relative mx-auto max-w-6xl px-6 py-8">
+          <FiltersBar filters={filters} onChange={updateFilters} onClear={clearFilters} autoFocusSearch={autoFocusSearch} />
 
-        <div className="mt-8">
+          <div className="mt-8">
           {status === "error" ? (
             <ErrorState onRetry={() => updateFilters({})} />
           ) : status === "loading" ? (
@@ -70,6 +82,7 @@ export function DiscoveryPage() {
               />
             </>
           )}
+          </div>
         </div>
       </section>
     </div>

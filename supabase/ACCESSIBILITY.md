@@ -1,4 +1,4 @@
-# Ticketyangu — Accessibility Audit
+# Afriticket — Accessibility Audit
 
 Honest split: what's below was verified by running real checks (contrast
 math, code review of every component for labels/semantics/focus

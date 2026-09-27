@@ -10,4 +10,4 @@ Disallow: /organiser/dashboard
 Disallow: /organiser/events/
 Disallow: /admin/
 
-Sitemap: https://ticketyangu.online/sitemap.xml
+Sitemap: https://afriticket.online/sitemap.xml

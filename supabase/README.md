@@ -1,4 +1,4 @@
-# Ticketyangu — Supabase
+# Afriticket — Supabase
 
 This folder is source, not automation — nothing here runs itself. Run the
 migrations in order the first time you set up a project, either by pasting

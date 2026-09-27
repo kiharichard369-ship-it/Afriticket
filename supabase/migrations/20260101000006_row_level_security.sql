@@ -1,4 +1,4 @@
--- Ticketyangu — 0006: Row Level Security
+-- Afriticket — 0006: Row Level Security
 -- Default posture: RLS on everywhere, deny by default. Writes to money- and
 -- inventory-bearing tables happen through Edge Functions using the service
 -- role (which bypasses RLS), never directly from the browser.

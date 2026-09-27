@@ -1,4 +1,4 @@
--- Ticketyangu — 0003: ticket inventory
+-- Afriticket — 0003: ticket inventory
 -- All money is stored in integer minor units (cents). Inventory is a ledger,
 -- never a client-side counter, so concurrent checkouts cannot oversell.
 

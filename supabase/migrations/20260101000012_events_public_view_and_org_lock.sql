@@ -1,4 +1,4 @@
--- Ticketyangu — 0012: security hardening pass (OWASP API Top 10 review)
+-- Afriticket — 0012: security hardening pass (OWASP API Top 10 review)
 --
 -- Found by testing: SupabaseEventsRepository selects `select *` on
 -- `events`, and the public RLS policy allows that regardless of which

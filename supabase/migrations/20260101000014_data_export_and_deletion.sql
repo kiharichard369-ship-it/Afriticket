@@ -1,4 +1,4 @@
--- Ticketyangu — 0014: data export and account deletion
+-- Afriticket — 0014: data export and account deletion
 --
 -- "Right to erasure" has a well-established exception for records a
 -- business is legally required to keep (tax/accounting records, fraud and

@@ -1,4 +1,4 @@
--- Ticketyangu — 0005: tickets, check-in, notifications, audit log
+-- Afriticket — 0005: tickets, check-in, notifications, audit log
 
 create type ticket_status as enum ('valid', 'used', 'cancelled', 'refunded', 'expired');
 

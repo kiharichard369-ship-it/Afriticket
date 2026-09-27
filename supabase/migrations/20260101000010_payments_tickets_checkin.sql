@@ -1,4 +1,4 @@
--- Ticketyangu — 0010: payment confirmation, ticket issuance, check-in, refunds
+-- Afriticket — 0010: payment confirmation, ticket issuance, check-in, refunds
 --
 -- These functions are the atomic core of Phase 3. They are deliberately the
 -- ONLY way orders move to 'paid', tickets get issued, and check-ins happen —

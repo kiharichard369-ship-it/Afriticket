@@ -1,4 +1,4 @@
--- Ticketyangu — 0008: inventory hold functions
+-- Afriticket — 0008: inventory hold functions
 --
 -- Concurrency strategy: every function below takes `select ... for update`
 -- on the ticket_types row for the ticket type it's touching, before doing

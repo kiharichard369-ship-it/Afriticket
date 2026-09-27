@@ -1,4 +1,4 @@
-# Ticketyangu — Operations
+# Afriticket — Operations
 
 ## Metrics (migration 0013)
 
@@ -157,8 +157,8 @@ pg_dump "$DATABASE_URL" -F c -f backup.dump
 
 # Restore into a NEW database — never restore over a live one without a
 # second backup of the current state first:
-createdb ticketyangu_restored
-pg_restore -d ticketyangu_restored backup.dump
+createdb afriticket_restored
+pg_restore -d afriticket_restored backup.dump
 ```
 
 ## Structured logging
