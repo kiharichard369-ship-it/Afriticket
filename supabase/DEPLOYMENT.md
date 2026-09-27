@@ -8,7 +8,7 @@ within one project, and sharing a project means a bad migration or a
 sandbox M-Pesa test payment touches real data. For each project
 separately:
 
-1. Run all 18 migrations in order (`/supabase/README.md`).
+1. Run all 20 migrations in order (`/supabase/README.md`).
 2. Run `seed.sql` only in staging — never in production (it's harmless
    there too, but there's no reason to).
 3. Deploy both Edge Functions with that project's own secrets
@@ -22,8 +22,8 @@ separately:
 
 Migrations are plain numbered SQL files, run in order, forward-only —
 there are no "down" migrations in this project. For a new environment,
-running all 18 in sequence is the whole procedure. The first 16 migrations
-were verified repeatedly throughout Phases 2–4; migrations 0017 and 0018 are
+running all 20 in sequence is the whole procedure. The first 16 migrations
+were verified repeatedly throughout Phases 2–4; migrations 0017–0020 are
 forward-only additions and should be smoke-tested in staging before
 production.
 
@@ -65,7 +65,7 @@ so nothing secret goes here):**
 | `PAYMENT_PROVIDER` | Yes | `mock` or `mpesa` |
 | `ALLOWED_ORIGIN` | Should be set before launch | Your deployed frontend's exact origin — defaults to `*` (any site can call `initiate-payment`) if unset; see `SECURITY.md` API8 |
 | `MPESA_CONSUMER_KEY` / `MPESA_CONSUMER_SECRET` | Only if `PAYMENT_PROVIDER=mpesa` | From developer.safaricom.co.ke |
-| `MPESA_SHORTCODE` | Only if mpesa | Sandbox default: `174379` |
+| `MPESA_SHORTCODE` | Only if mpesa | Afriticket shortcode supplied for this deployment: `3432873`; confirm it is enabled in the selected Daraja environment |
 | `MPESA_PASSKEY` | Only if mpesa | From the Daraja portal |
 | `MPESA_BASE_URL` | Only if mpesa | Defaults to sandbox host; set to production host to go live |
 | `MPESA_CALLBACK_URL` | Only if mpesa | Must include a long random secret path segment |
@@ -174,9 +174,9 @@ built as a page yet.
    throughout this project's build).
 2. `npm run lint` — zero errors (warnings are pre-existing and reviewed).
 3. `deno test --allow-net --allow-read --allow-env supabase/functions` —
-   20/20 passing.
-4. Run all 18 migrations against a fresh database — smoke-test migrations
-   0017 and 0018 in staging before production. Confirm
+   23/23 passing.
+4. Run all 20 migrations against a fresh database — smoke-test migrations
+   0017–0020 in staging before production. Confirm
    `expire_stale_holds()` and the private notification worker are both
    scheduled; migrations do not create schedules.
 5. With `PAYMENT_PROVIDER=mock`: browse events → pick tickets → complete

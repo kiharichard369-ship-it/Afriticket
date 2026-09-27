@@ -45,7 +45,7 @@ Edge Function tests with:
 deno test --allow-net --allow-read supabase/functions
 ```
 
-The existing payment suite was run for real before shipping (20 tests, all
+The existing payment suite was run locally before shipping (23 tests, all
 passing), including:
 
 - The **M-Pesa adapter's actual HTTP flow** — `initiate()`, `query()`, and
@@ -94,7 +94,7 @@ supabase secrets set ALLOWED_ORIGIN=https://your-deployed-frontend.example.com
 # Only needed once PAYMENT_PROVIDER=mpesa:
 supabase secrets set MPESA_CONSUMER_KEY=...
 supabase secrets set MPESA_CONSUMER_SECRET=...
-supabase secrets set MPESA_SHORTCODE=174379          # sandbox default
+supabase secrets set MPESA_SHORTCODE=3432873          # Afriticket shortcode supplied for this deployment
 supabase secrets set MPESA_PASSKEY=...
 supabase secrets set MPESA_BASE_URL=https://sandbox.safaricom.co.ke
 supabase secrets set MPESA_CALLBACK_URL=https://<project-ref>.supabase.co/functions/v1/mpesa-webhook/<pick-a-long-random-secret>
@@ -167,7 +167,7 @@ developer portal for your sandbox (or production) app.
 
 ## Switching from mock to real M-Pesa
 
-1. Get sandbox credentials from developer.safaricom.co.ke.
+1. Get sandbox credentials from developer.safaricom.co.ke and confirm that shortcode `3432873` is enabled for the selected Daraja environment.
 2. Set the `MPESA_*` secrets above and `PAYMENT_PROVIDER=mpesa`.
 3. Redeploy both functions so they pick up the new secrets.
 4. Test with Safaricom's sandbox test MSISDN (their docs specify one that
