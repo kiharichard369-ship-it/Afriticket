@@ -8,8 +8,8 @@ begin
     raise exception 'Migration 0018 requires public.notifications. Apply migrations 20260101000001 through 20260101000014 in filename order first.';
   end if;
 end
-$$; locked_until and
--- locked_by identify an in-flight attempt; an expired lease is claimable again.
+$$;
+-- locked_until and locked_by identify an in-flight attempt; an expired lease is claimable again.
 -- Provider calls must use notification.id as their idempotency key.
 
 alter table public.notifications
