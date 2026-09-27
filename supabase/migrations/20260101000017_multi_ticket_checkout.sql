@@ -5,13 +5,13 @@
 -- can safely own several inventory holds. Prices and totals are always read
 -- from locked server rows, never accepted from the browser.
 
-create table public.order_holds (
+create table if not exists public.order_holds (
   order_id uuid not null references public.orders (id) on delete cascade,
   hold_id uuid not null references public.inventory_holds (id),
   primary key (order_id, hold_id)
 );
 
-create index order_holds_hold_idx on public.order_holds (hold_id);
+create index if not exists order_holds_hold_idx on public.order_holds (hold_id);
 
 alter table public.order_holds enable row level security;
 revoke all on table public.order_holds from public, anon, authenticated;
@@ -28,12 +28,12 @@ on conflict do nothing;
 -- once. Keep the earliest association in the new join table, then prevent
 -- that state for all new orders. Those older orders still use their legacy
 -- orders.hold_id fallback during payment confirmation.
-create unique index order_holds_one_order_per_hold_idx on public.order_holds (hold_id);
+create unique index if not exists order_holds_one_order_per_hold_idx on public.order_holds (hold_id);
 
 -- Create all requested holds in one database transaction. If any ticket type
 -- is sold out or violates its limit, PostgreSQL rolls back every hold from the
 -- cart instead of leaving a partially-held mixed checkout behind.
-create function public.create_ticket_holds(
+create or replace function public.create_ticket_holds(
   p_event_id uuid,
   p_items jsonb,
   p_session_key text
@@ -259,7 +259,7 @@ grant execute on function public.create_pending_order(uuid, text, text, text) to
 -- only opaque hold IDs and contact fields; this function locks the holds and
 -- ticket types, verifies event/session ownership, and calculates every line
 -- and the order total from current database prices.
-create function public.create_pending_order_multi(
+create or replace function public.create_pending_order_multi(
   p_hold_ids uuid[],
   p_session_key text,
   p_buyer_email text,

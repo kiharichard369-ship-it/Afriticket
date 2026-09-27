@@ -1,7 +1,14 @@
 -- Afriticket — 0018: notification delivery worker scaffolding
 --
 -- The worker keeps status='queued' while a short lease is active so existing
--- clients and the backlog view remain backwards-compatible. locked_until and
+-- clients and the backlog view remain backwards-compatible.
+do $$
+begin
+  if to_regclass('public.notifications') is null then
+    raise exception 'Migration 0018 requires public.notifications. Apply migrations 20260101000001 through 20260101000014 in filename order first.';
+  end if;
+end
+$$; locked_until and
 -- locked_by identify an in-flight attempt; an expired lease is claimable again.
 -- Provider calls must use notification.id as their idempotency key.
 

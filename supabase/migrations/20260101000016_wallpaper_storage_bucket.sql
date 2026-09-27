@@ -17,20 +17,24 @@ on conflict (id) do nothing;
 
 -- Public read (the wallpaper needs to load for every visitor, logged in
 -- or not) — anyone can view files in this bucket.
+drop policy if exists "site-assets: public read" on storage.objects;
 create policy "site-assets: public read"
   on storage.objects for select
   using (bucket_id = 'site-assets');
 
 -- Only platform staff can upload, replace, or delete — reuses the same
 -- helper function every other staff-only policy in this project uses.
+drop policy if exists "site-assets: staff upload" on storage.objects;
 create policy "site-assets: staff upload"
   on storage.objects for insert
   with check (bucket_id = 'site-assets' and public.is_platform_staff());
 
+drop policy if exists "site-assets: staff update" on storage.objects;
 create policy "site-assets: staff update"
   on storage.objects for update
   using (bucket_id = 'site-assets' and public.is_platform_staff());
 
+drop policy if exists "site-assets: staff delete" on storage.objects;
 create policy "site-assets: staff delete"
   on storage.objects for delete
   using (bucket_id = 'site-assets' and public.is_platform_staff());

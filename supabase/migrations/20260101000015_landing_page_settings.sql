@@ -5,8 +5,22 @@
 -- query on every visit, and a singleton keeps that trivial and type-safe.
 -- Public (anon) can read it, since the landing page itself is public;
 -- only platform staff can write to it.
+--
+-- Prerequisite: apply migrations 0001–0014 first. This migration extends the
+-- catalog and identity schema; it does not bootstrap the core tables.
+do $$
+begin
+  if to_regclass('public.events') is null then
+    raise exception 'Migration 0015 requires public.events. Apply migrations 20260101000001 through 20260101000014 in filename order first.';
+  end if;
+  if to_regclass('public.profiles') is null or to_regclass('public.categories') is null
+     or to_regclass('public.venues') is null or to_regclass('public.organisations') is null then
+    raise exception 'Migration 0015 requires the core Afriticket catalog tables from migrations 0001–0002.';
+  end if;
+end
+$$;
 
-create table public.site_settings (
+create table if not exists public.site_settings (
   id boolean primary key default true,
   wallpaper_url text,
   wallpaper_updated_by uuid references public.profiles (id),
@@ -21,21 +35,25 @@ create table public.site_settings (
   constraint site_settings_singleton check (id)
 );
 
-insert into public.site_settings (id) values (true);
+insert into public.site_settings (id) values (true)
+on conflict (id) do nothing;
 
+drop trigger if exists site_settings_set_updated_at on public.site_settings;
 create trigger site_settings_set_updated_at
   before update on public.site_settings
   for each row execute function public.set_updated_at();
 
 alter table public.site_settings enable row level security;
 
+drop policy if exists "site_settings: public read" on public.site_settings;
 create policy "site_settings: public read" on public.site_settings for select
   using (true);
+drop policy if exists "site_settings: staff write" on public.site_settings;
 create policy "site_settings: staff write" on public.site_settings for update
   using (public.is_platform_staff());
 
 -- ── Featured events ────────────────────────────────────────────────────
-alter table public.events add column is_featured boolean not null default false;
+alter table public.events add column if not exists is_featured boolean not null default false;
 
 -- Staff-only column to set; reuse the existing organiser/staff update
 -- policies on `events` for this (an organiser CAN'T set is_featured on
@@ -55,6 +73,7 @@ begin
 end;
 $$;
 
+drop trigger if exists events_enforce_featured_flag on public.events;
 create trigger events_enforce_featured_flag
   before update of is_featured on public.events
   for each row execute function public.enforce_featured_flag_staff_only();
@@ -82,7 +101,7 @@ where e.status in ('published', 'sold_out');
 grant select on public.events_public to anon, authenticated;
 
 -- ── Newsletter subscribers ────────────────────────────────────────────────
-create table public.newsletter_subscribers (
+create table if not exists public.newsletter_subscribers (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
   interests text[] not null default '{}',
@@ -95,8 +114,10 @@ alter table public.newsletter_subscribers enable row level security;
 -- Anyone can subscribe themselves; nobody (not even authenticated buyers)
 -- can read the list back through the API — that's a staff/export-only
 -- concern, kept out of the public API surface entirely on purpose.
+drop policy if exists "newsletter: anyone can subscribe" on public.newsletter_subscribers;
 create policy "newsletter: anyone can subscribe" on public.newsletter_subscribers for insert
   with check (true);
+drop policy if exists "newsletter: staff can read" on public.newsletter_subscribers;
 create policy "newsletter: staff can read" on public.newsletter_subscribers for select
   using (public.is_platform_staff());
 
