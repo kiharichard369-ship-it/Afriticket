@@ -276,11 +276,26 @@ export function OrganiserEventFormPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Starts at</label>
-            <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required />
+            <Input
+              type="datetime-local"
+              value={startsAt}
+              onChange={(e) => {
+                setStartsAt(e.target.value);
+                e.currentTarget.blur();
+              }}
+              required
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Ends at (optional)</label>
-            <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            <Input
+              type="datetime-local"
+              value={endsAt}
+              onChange={(e) => {
+                setEndsAt(e.target.value);
+                e.currentTarget.blur();
+              }}
+            />
           </div>
         </div>
 

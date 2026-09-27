@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
-import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { formatEventDate } from "../lib/date";
 import { formatKes } from "../lib/currency";
@@ -30,7 +29,7 @@ export function AdminModerationPage() {
   const [wallpaperMessage, setWallpaperMessage] = useState<string | null>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
-  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryNames, setNewCategoryNames] = useState("");
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
 
@@ -50,27 +49,30 @@ export function AdminModerationPage() {
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
   }
 
-  async function addCategory() {
+  async function addCategories() {
     if (!supabase) return;
     setCategoryError(null);
     setCategoryMessage(null);
-    const name = newCategoryName.trim();
-    if (name.length < 2) {
-      setCategoryError("Enter a category name with at least 2 characters.");
+    const names = [...new Set(newCategoryNames.split(/[\n,]+/).map((name) => name.trim()).filter(Boolean))];
+    if (names.length === 0 || names.some((name) => name.length < 2)) {
+      setCategoryError("Enter one or more category names with at least 2 characters each.");
       return;
     }
     setBusyId("category");
-    const { data, error } = await supabase.rpc("create_category", { p_name: name });
+    const added: CategoryRow[] = [];
+    const failures: string[] = [];
+    for (const name of names) {
+      const { data, error } = await supabase.rpc("create_category", { p_name: name });
+      if (error) failures.push(`${name}: ${error.message}`);
+      else if (data) added.push(data as CategoryRow);
+    }
     setBusyId(null);
-    if (error) {
-      setCategoryError(error.message);
-      return;
+    if (added.length > 0) {
+      setCategories((current) => [...current, ...added].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)));
+      setNewCategoryNames("");
+      setCategoryMessage(`${added.length} categor${added.length === 1 ? "y is" : "ies are"} now available when posting an event.`);
     }
-    if (data) {
-      setCategories((current) => [...current, data as CategoryRow].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)));
-    }
-    setNewCategoryName("");
-    setCategoryMessage(`“${name}” is now available when posting an event.`);
+    if (failures.length > 0) setCategoryError(failures.join("; "));
   }
 
   async function uploadWallpaper(file: File) {
@@ -195,20 +197,25 @@ export function AdminModerationPage() {
         <div>
           <h2 className="font-display text-xl text-ink dark:text-ink-dark">Event categories</h2>
           <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
-            These categories appear on the landing page and in the event-posting selector. Add one when the existing list does not fit an event.
+            These categories appear on the landing page and in the event-posting selector. Add one or several at once when the existing list does not fit an event.
           </p>
         </div>
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={newCategoryName}
-            onChange={(event) => setNewCategoryName(event.target.value)}
-            onKeyDown={(event) => { if (event.key === "Enter") void addCategory(); }}
-            placeholder="e.g. Food & Dining"
-            aria-label="New category name"
-            maxLength={80}
-          />
-          <Button disabled={busyId === "category"} onClick={() => void addCategory()}>
-            {busyId === "category" ? "Adding…" : "Add category"}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label htmlFor="new-category-names" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">Names separated by commas or new lines</label>
+            <textarea
+              id="new-category-names"
+              value={newCategoryNames}
+              onChange={(event) => setNewCategoryNames(event.target.value)}
+              placeholder={'e.g. Food & Dining, Sports\nFamily & Kids'}
+              aria-label="New category names"
+              maxLength={500}
+              rows={2}
+              className="w-full rounded-lg border border-border-warm bg-paper-raised px-3.5 py-2.5 text-[0.95rem] text-ink focus:border-saffron-dark dark:border-border-dark dark:bg-surface-dark dark:text-ink-dark"
+            />
+          </div>
+          <Button disabled={busyId === "category"} onClick={() => void addCategories()}>
+            {busyId === "category" ? "Adding…" : "Add categories"}
           </Button>
         </div>
         {categoryError && <p className="mt-2 text-sm text-rust" role="alert">{categoryError}</p>}
