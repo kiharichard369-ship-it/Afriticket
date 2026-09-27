@@ -8,7 +8,7 @@ within one project, and sharing a project means a bad migration or a
 sandbox M-Pesa test payment touches real data. For each project
 separately:
 
-1. Run all 21 migrations in order (`/supabase/README.md`).
+1. Run all 22 migrations in order (`/supabase/README.md`).
 2. Run `seed.sql` only in staging — never in production (it's harmless
    there too, but there's no reason to).
 3. Deploy both Edge Functions with that project's own secrets
@@ -22,8 +22,8 @@ separately:
 
 Migrations are plain numbered SQL files, run in order, forward-only —
 there are no "down" migrations in this project. For a new environment,
-running all 21 in sequence is the whole procedure. The first 16 migrations
-were verified repeatedly throughout Phases 2–4; migrations 0017–0021 are
+running all 22 in sequence is the whole procedure. The first 16 migrations
+were verified repeatedly throughout Phases 2–4; migrations 0017–0022 are
 forward-only additions and should be smoke-tested in staging before
 production.
 
@@ -175,8 +175,8 @@ built as a page yet.
 2. `npm run lint` — zero errors (warnings are pre-existing and reviewed).
 3. `deno test --allow-net --allow-read --allow-env supabase/functions` —
    23/23 passing.
-4. Run all 21 migrations against a fresh database — smoke-test migrations
-   0017–0021 in staging before production. Confirm
+4. Run all 22 migrations against a fresh database — smoke-test migrations
+   0017–0022 in staging before production. Confirm
    `expire_stale_holds()` and the private notification worker are both
    scheduled; migrations do not create schedules.
 5. With `PAYMENT_PROVIDER=mock`: browse events → pick tickets → complete

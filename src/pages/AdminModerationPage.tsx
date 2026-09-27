@@ -27,6 +27,17 @@ interface PlatformStaffRow {
   role: PlatformRole;
   created_at: string;
 }
+interface PlatformRoleAuditRow {
+  id: string;
+  actor_id: string | null;
+  actor_email: string | null;
+  action: "grant_platform_role" | "revoke_platform_role";
+  target_user_id: string | null;
+  target_email: string | null;
+  target_full_name: string | null;
+  metadata: { role?: PlatformRole; email?: string } | null;
+  created_at: string;
+}
 
 export function AdminModerationPage() {
   const { user } = useAuth();
@@ -47,21 +58,24 @@ export function AdminModerationPage() {
   const [staffRole, setStaffRole] = useState<PlatformRole>("moderator");
   const [staffError, setStaffError] = useState<string | null>(null);
   const [staffMessage, setStaffMessage] = useState<string | null>(null);
+  const [roleAudit, setRoleAudit] = useState<PlatformRoleAuditRow[]>([]);
 
   async function refresh() {
     if (!supabase) return;
-    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }] = await Promise.all([
+    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }, { data: auditRows }] = await Promise.all([
       supabase.from("organiser_applications").select("*").eq("status", "pending").order("created_at"),
       supabase.from("events").select("*, category:categories(*), venue:venues(*)").eq("status", "pending_review").order("created_at"),
       supabase.from("refunds").select("id, order_id, amount_minor, reason, order:orders(reference)").eq("status", "requested").order("created_at"),
       supabase.from("categories").select("*").order("sort_order").order("name"),
       supabase.rpc("list_platform_staff"),
+      supabase.rpc("list_platform_role_audit", { p_limit: 50 }),
     ]);
     setApplications((apps as OrganiserApplicationRow[]) ?? []);
     setEvents((evts as EventRow[]) ?? []);
     setRefunds((rfds as unknown as RefundRow[]) ?? []);
     setCategories((cats as CategoryRow[]) ?? []);
     setPlatformStaff((staffRows as PlatformStaffRow[]) ?? []);
+    setRoleAudit((auditRows as PlatformRoleAuditRow[]) ?? []);
     const settings = await siteSettingsRepository.getPublic().catch(() => null);
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
   }
@@ -325,6 +339,38 @@ export function AdminModerationPage() {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      <Card className="mt-6 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl text-ink dark:text-ink-dark">Role-change activity</h2>
+            <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+              Recent grants, role updates, and removals made through the platform-role controls.
+            </p>
+          </div>
+          <Badge tone="saffron">Latest {roleAudit.length}</Badge>
+        </div>
+        <div className="mt-4 space-y-2">
+          {roleAudit.length === 0 ? (
+            <p className="text-sm text-ink-faint">No role changes recorded yet, or migration 0022 has not been applied.</p>
+          ) : roleAudit.map((entry) => {
+            const target = entry.target_full_name || entry.target_email || entry.target_user_id || "Unknown account";
+            const role = entry.metadata?.role;
+            const verb = entry.action === "grant_platform_role" ? "granted/updated" : "removed";
+            return (
+              <div key={entry.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+                <div className="min-w-0">
+                  <p className="text-sm text-ink dark:text-ink-dark">
+                    <strong>{entry.actor_email || entry.actor_id || "Unknown admin"}</strong> {verb} {role ? <><strong>{role}</strong> for </> : "the platform role for "}<strong>{target}</strong>
+                  </p>
+                  {entry.target_full_name && entry.target_email && <p className="text-xs text-ink-soft dark:text-ink-soft-dark">{entry.target_email}</p>}
+                </div>
+                <time className="shrink-0 text-xs text-ink-faint" dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString()}</time>
+              </div>
+            );
+          })}
         </div>
       </Card>
 
