@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
+import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { formatEventDate } from "../lib/date";
 import { formatKes } from "../lib/currency";
@@ -16,6 +17,15 @@ interface RefundRow {
   amount_minor: number;
   reason: string | null;
   order?: { reference: string } | null;
+}
+
+type PlatformRole = "support" | "moderator" | "admin";
+interface PlatformStaffRow {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  role: PlatformRole;
+  created_at: string;
 }
 
 export function AdminModerationPage() {
@@ -32,19 +42,26 @@ export function AdminModerationPage() {
   const [newCategoryNames, setNewCategoryNames] = useState("");
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
+  const [platformStaff, setPlatformStaff] = useState<PlatformStaffRow[]>([]);
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffRole, setStaffRole] = useState<PlatformRole>("moderator");
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [staffMessage, setStaffMessage] = useState<string | null>(null);
 
   async function refresh() {
     if (!supabase) return;
-    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }] = await Promise.all([
+    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }] = await Promise.all([
       supabase.from("organiser_applications").select("*").eq("status", "pending").order("created_at"),
       supabase.from("events").select("*, category:categories(*), venue:venues(*)").eq("status", "pending_review").order("created_at"),
       supabase.from("refunds").select("id, order_id, amount_minor, reason, order:orders(reference)").eq("status", "requested").order("created_at"),
       supabase.from("categories").select("*").order("sort_order").order("name"),
+      supabase.rpc("list_platform_staff"),
     ]);
     setApplications((apps as OrganiserApplicationRow[]) ?? []);
     setEvents((evts as EventRow[]) ?? []);
     setRefunds((rfds as unknown as RefundRow[]) ?? []);
     setCategories((cats as CategoryRow[]) ?? []);
+    setPlatformStaff((staffRows as PlatformStaffRow[]) ?? []);
     const settings = await siteSettingsRepository.getPublic().catch(() => null);
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
   }
@@ -73,6 +90,46 @@ export function AdminModerationPage() {
       setCategoryMessage(`${added.length} categor${added.length === 1 ? "y is" : "ies are"} now available when posting an event.`);
     }
     if (failures.length > 0) setCategoryError(failures.join("; "));
+  }
+
+  async function grantPlatformRole() {
+    if (!supabase) return;
+    const email = staffEmail.trim();
+    setStaffError(null);
+    setStaffMessage(null);
+    if (!email || !email.includes("@")) {
+      setStaffError("Enter the email address of an existing Afriticket account.");
+      return;
+    }
+    setBusyId("platform-role");
+    const { data, error } = await supabase.rpc("grant_platform_role", { p_email: email, p_role: staffRole }).single();
+    setBusyId(null);
+    if (error) {
+      setStaffError(error.message);
+      return;
+    }
+    if (data) {
+      const row = data as PlatformStaffRow;
+      setPlatformStaff((current) => [...current.filter((staff) => staff.user_id !== row.user_id), row].sort((a, b) => a.email.localeCompare(b.email)));
+    }
+    setStaffEmail("");
+    setStaffMessage(`${email} now has the ${staffRole} platform role.`);
+  }
+
+  async function revokePlatformRole(staff: PlatformStaffRow) {
+    if (!supabase) return;
+    if (!window.confirm(`Remove the ${staff.role} role from ${staff.email}?`)) return;
+    setStaffError(null);
+    setStaffMessage(null);
+    setBusyId(`platform-role-${staff.user_id}`);
+    const { error } = await supabase.rpc("revoke_platform_role", { p_user_id: staff.user_id });
+    setBusyId(null);
+    if (error) {
+      setStaffError(error.message);
+      return;
+    }
+    setPlatformStaff((current) => current.filter((row) => row.user_id !== staff.user_id));
+    setStaffMessage(`Platform role removed from ${staff.email}.`);
   }
 
   async function uploadWallpaper(file: File) {
@@ -222,6 +279,52 @@ export function AdminModerationPage() {
         {categoryMessage && <p className="mt-2 text-sm text-sage" role="status">{categoryMessage}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           {categories.map((category) => <Badge key={category.id} tone="saffron">{category.name}</Badge>)}
+        </div>
+      </Card>
+
+      <Card className="mt-6 p-5">
+        <div>
+          <h2 className="font-display text-xl text-ink dark:text-ink-dark">Platform roles</h2>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+            Grant or update a role for an existing Afriticket account by email. Only administrators can manage this list.
+          </p>
+        </div>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label htmlFor="staff-email" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">Account email</label>
+            <Input id="staff-email" type="email" value={staffEmail} onChange={(event) => setStaffEmail(event.target.value)} placeholder="person@example.com" />
+          </div>
+          <div className="sm:w-44">
+            <label htmlFor="staff-role" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">Role</label>
+            <Select id="staff-role" value={staffRole} onChange={(event) => setStaffRole(event.target.value as PlatformRole)}>
+              <option value="support">Support</option>
+              <option value="moderator">Moderator</option>
+              <option value="admin">Administrator</option>
+            </Select>
+          </div>
+          <Button disabled={busyId === "platform-role"} onClick={() => void grantPlatformRole()}>
+            {busyId === "platform-role" ? "Saving…" : "Grant role"}
+          </Button>
+        </div>
+        {staffError && <p className="mt-2 text-sm text-rust" role="alert">{staffError}</p>}
+        {staffMessage && <p className="mt-2 text-sm text-sage" role="status">{staffMessage}</p>}
+        <div className="mt-4 space-y-2">
+          {platformStaff.length === 0 ? (
+            <p className="text-sm text-ink-faint">No platform roles found, or migration 0021 has not been applied yet.</p>
+          ) : platformStaff.map((staff) => (
+            <div key={staff.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+              <div>
+                <p className="font-medium text-ink dark:text-ink-dark">{staff.full_name || staff.email}</p>
+                {staff.full_name && <p className="text-xs text-ink-soft dark:text-ink-soft-dark">{staff.email}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge tone="saffron">{staff.role}</Badge>
+                <Button size="sm" variant="outline" disabled={busyId === `platform-role-${staff.user_id}`} onClick={() => void revokePlatformRole(staff)}>
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
