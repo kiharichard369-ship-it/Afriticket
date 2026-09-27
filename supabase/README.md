@@ -56,9 +56,11 @@ each one into the Supabase SQL Editor, or with the Supabase CLI.
     server-priced multi-item orders, and multi-hold payment confirmation.
 18. `20260101000018_notification_delivery_worker.sql` — leased notification
     queue claims, provider-safe delivery state transitions, and retry metadata.
+19. `20260101000019_event_cover_images.sql` — organizer-scoped event cover-image
+    upload, replacement, and deletion policies in the public site-assets bucket.
 
 Run them strictly in order — later files depend on tables, views, and
-functions created earlier. Migration 0018 does not change payment success,
+functions created earlier. Migrations 0018 and 0019 do not change payment success,
 ticket issuance, inventory, or order status semantics; it only adds the
 post-confirmation notification delivery contract.
 
@@ -84,7 +86,7 @@ types. Safe to run in any environment, including production.
 ## Using the Supabase CLI instead
 
 If you'd rather use `supabase db push` / `supabase migration up`, copy the
-17 files in `migrations/` into your project's own `supabase/migrations`
+19 files in `migrations/` into your project's own `supabase/migrations`
 folder (same names, so they keep their order) and run:
 
 ```
@@ -196,9 +198,8 @@ does by default, then apply the migrations in order and drive
 
 ## What's deliberately not here yet
 
-- **Storage buckets** for event cover images and organiser documents —
-  added when the media-upload flow is built, so the bucket policies match
-  the actual upload path.
+- **Organiser documents** — event cover-image uploads are now implemented in
+  migration 0019; organiser-document storage remains intentionally out of scope.
 - **Payment adapter + webhook processing** (M-Pesa/card) and **ticket
   issuance** are implemented by the `initiate-payment` and `mpesa-webhook`
   Edge Functions. They still require provider credentials for real money

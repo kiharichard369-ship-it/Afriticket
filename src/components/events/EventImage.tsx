@@ -38,7 +38,7 @@ export function EventImage({
           loading={loading}
           decoding="async"
           sizes={sizes}
-          className={cn("h-full w-full object-cover", imageClassName)}
+          className={cn("h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-focus-within:scale-105", imageClassName)}
           onError={() => setFailedSource(imageSource)}
         />
       ) : (

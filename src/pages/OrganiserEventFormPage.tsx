@@ -34,6 +34,9 @@ export function OrganiserEventFormPage() {
   const [categoryId, setCategoryId] = useState("");
   const [venueId, setVenueId] = useState("");
   const [description, setDescription] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [isFree, setIsFree] = useState(false);
@@ -64,6 +67,7 @@ export function OrganiserEventFormPage() {
       setCategoryId(event.category_id);
       setVenueId(event.venue_id);
       setDescription(event.description ?? "");
+      setCoverImageUrl(event.cover_image_url ?? null);
       setStartsAt(event.starts_at?.slice(0, 16) ?? "");
       setEndsAt(event.ends_at?.slice(0, 16) ?? "");
       setIsFree(event.is_free);
@@ -106,6 +110,37 @@ export function OrganiserEventFormPage() {
     return data.id as string;
   }
 
+  async function uploadCoverImage(currentEventId: string): Promise<string | null> {
+    if (!supabase || !coverImageFile) return coverImageUrl;
+    const extension = coverImageFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `events/${currentEventId}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("site-assets").upload(path, coverImageFile, {
+      cacheControl: "3600",
+      contentType: coverImageFile.type,
+      upsert: false,
+    });
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from("site-assets").getPublicUrl(path);
+    const { error: updateError } = await supabase.from("events").update({ cover_image_url: data.publicUrl }).eq("id", currentEventId);
+    if (updateError) throw updateError;
+    setCoverImageUrl(data.publicUrl);
+    setCoverImageFile(null);
+    return data.publicUrl;
+  }
+  function selectCoverImage(file: File | undefined) {
+    if (!file) return;
+    if (!("image/jpeg" === file.type || "image/png" === file.type || "image/webp" === file.type)) {
+      setError("Choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Choose an event image smaller than 8 MB.");
+      return;
+    }
+    setError(null);
+    setCoverImageFile(file);
+    setCoverImagePreview(URL.createObjectURL(file));
+  }
   async function save(nextStatus: "draft" | "pending_review") {
     if (!supabase || !membership) return;
     setError(null);
@@ -149,6 +184,13 @@ export function OrganiserEventFormPage() {
       }
     }
 
+    try {
+      await uploadCoverImage(currentEventId!);
+    } catch (imageError) {
+      setError(`Event saved, but the image could not be uploaded: ${(imageError as Error).message}`);
+      setSaving(null);
+      return;
+    }
     // Sync ticket types: update existing, insert new, delete removed drafts.
     const validTickets = tickets.filter((t) => t.name && t.priceKes && t.capacity);
     for (const t of validTickets) {
@@ -242,6 +284,22 @@ export function OrganiserEventFormPage() {
           </div>
         </div>
 
+        <Card className="space-y-3 p-4">
+          <div>
+            <h2 className="font-display text-lg text-ink dark:text-ink-dark">Event image</h2>
+            <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Add a clear landscape image so your event stands out in discovery and on its detail page.</p>
+          </div>
+          {(coverImagePreview || coverImageUrl) && (
+            <img src={coverImagePreview || coverImageUrl || undefined} alt="Event cover preview" className="aspect-[16/9] w-full rounded-lg object-cover" />
+          )}
+          <Input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => selectCoverImage(event.target.files?.[0])}
+            aria-label="Event cover image"
+          />
+          <p className="text-xs text-ink-faint">JPEG, PNG, or WebP · maximum 8 MB · recommended landscape ratio 16:9.</p>
+        </Card>
         <div>
           <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Description</label>
           <textarea
