@@ -17,6 +17,7 @@
     "@zxing/browser": "^0.1.5",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.47.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

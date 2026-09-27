@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { jsPDF } from "jspdf";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
@@ -37,6 +38,19 @@ interface PlatformRoleAuditRow {
   target_full_name: string | null;
   metadata: { role?: PlatformRole; email?: string } | null;
   created_at: string;
+}
+
+function csvCell(value: string | null | undefined) {
+  return `"${(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function exportFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export function AdminModerationPage() {
@@ -144,6 +158,54 @@ export function AdminModerationPage() {
     }
     setPlatformStaff((current) => current.filter((row) => row.user_id !== staff.user_id));
     setStaffMessage(`Platform role removed from ${staff.email}.`);
+  }
+
+  function exportRoleAuditCsv() {
+    const header = ["Timestamp", "Action", "Role", "Actor email", "Target name", "Target email", "Target user ID"];
+    const rows = roleAudit.map((entry) => [
+      new Date(entry.created_at).toISOString(),
+      entry.action === "grant_platform_role" ? "granted or updated" : "removed",
+      entry.metadata?.role ?? "",
+      entry.actor_email ?? entry.actor_id ?? "",
+      entry.target_full_name ?? "",
+      entry.target_email ?? entry.metadata?.email ?? "",
+      entry.target_user_id ?? "",
+    ]);
+    const csv = [header, ...rows].map((row) => row.map((value) => csvCell(value)).join(",")).join("\r\n");
+    exportFile(new Blob([`\ufeff${csv}\r\n`], { type: "text/csv;charset=utf-8" }), `afriticket-role-audit-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+
+  function exportRoleAuditPdf() {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const margin = 42;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = 48;
+    doc.setFontSize(18);
+    doc.text("Afriticket platform role audit", margin, y);
+    y += 18;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated ${new Date().toLocaleString()} · ${roleAudit.length} entries`, margin, y);
+    y += 24;
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(9);
+    const lineHeight = 13;
+    roleAudit.forEach((entry, index) => {
+      const action = entry.action === "grant_platform_role" ? "Granted/updated" : "Removed";
+      const role = entry.metadata?.role ? ` (${entry.metadata.role})` : "";
+      const actor = entry.actor_email ?? entry.actor_id ?? "Unknown admin";
+      const target = entry.target_full_name || entry.target_email || entry.target_user_id || "Unknown account";
+      const text = `${index + 1}. ${new Date(entry.created_at).toLocaleString()} — ${action}${role} for ${target}; by ${actor}`;
+      const lines = doc.splitTextToSize(text, pageWidth - margin * 2) as string[];
+      if (y + lines.length * lineHeight > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(lines, margin, y);
+      y += lines.length * lineHeight + 6;
+    });
+    doc.save(`afriticket-role-audit-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   async function uploadWallpaper(file: File) {
@@ -350,7 +412,11 @@ export function AdminModerationPage() {
               Recent grants, role updates, and removals made through the platform-role controls.
             </p>
           </div>
-          <Badge tone="saffron">Latest {roleAudit.length}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="saffron">Latest {roleAudit.length}</Badge>
+            <Button size="sm" variant="outline" disabled={roleAudit.length === 0} onClick={exportRoleAuditCsv}>Download CSV</Button>
+            <Button size="sm" variant="outline" disabled={roleAudit.length === 0} onClick={exportRoleAuditPdf}>Download PDF</Button>
+          </div>
         </div>
         <div className="mt-4 space-y-2">
           {roleAudit.length === 0 ? (
