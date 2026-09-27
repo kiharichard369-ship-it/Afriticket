@@ -58,6 +58,8 @@ each one into the Supabase SQL Editor, or with the Supabase CLI.
     queue claims, provider-safe delivery state transitions, and retry metadata.
 19. `20260101000019_event_cover_images.sql` — organizer-scoped event cover-image
     upload, replacement, and deletion policies in the public site-assets bucket.
+20. `20260101000020_category_management.sql` — the platform-staff RPC for adding
+    categories used by the landing page and event-posting workflow.
 
 Run them strictly in order — later files depend on tables, views, and
 functions created earlier. Migrations 0018 and 0019 do not change payment success,
@@ -68,7 +70,7 @@ storage policies.
 If migration 0015 reports `relation "public.events" does not exist`, the
 Supabase project has not received migrations 0001–0014, or the frontend `.env`
 points at a different project. Run migrations 0001–0014 first, in filename
-order, then rerun 0015–0019. The later migrations now fail with an explicit
+order, then rerun 0015–0020. The later migrations now fail with an explicit
 prerequisite message and are safe to rerun after a partial SQL Editor attempt.
 
 ## Further reading

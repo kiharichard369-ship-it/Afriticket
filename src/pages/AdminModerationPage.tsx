@@ -4,9 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
 import { formatEventDate } from "../lib/date";
 import { formatKes } from "../lib/currency";
-import type { EventRow, OrganiserApplicationRow } from "../types/database";
+import type { CategoryRow, EventRow, OrganiserApplicationRow } from "../types/database";
 import { siteSettingsRepository } from "../repositories/siteSettingsRepository";
 
 interface RefundRow {
@@ -27,20 +29,50 @@ export function AdminModerationPage() {
   const [wallpaperError, setWallpaperError] = useState<string | null>(null);
   const [wallpaperMessage, setWallpaperMessage] = useState<string | null>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
 
   async function refresh() {
     if (!supabase) return;
-    const [{ data: apps }, { data: evts }, { data: rfds }] = await Promise.all([
+    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }] = await Promise.all([
       supabase.from("organiser_applications").select("*").eq("status", "pending").order("created_at"),
       supabase.from("events").select("*, category:categories(*), venue:venues(*)").eq("status", "pending_review").order("created_at"),
       supabase.from("refunds").select("id, order_id, amount_minor, reason, order:orders(reference)").eq("status", "requested").order("created_at"),
+      supabase.from("categories").select("*").order("sort_order").order("name"),
     ]);
     setApplications((apps as OrganiserApplicationRow[]) ?? []);
     setEvents((evts as EventRow[]) ?? []);
     setRefunds((rfds as unknown as RefundRow[]) ?? []);
+    setCategories((cats as CategoryRow[]) ?? []);
     const settings = await siteSettingsRepository.getPublic().catch(() => null);
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
   }
+
+  async function addCategory() {
+    if (!supabase) return;
+    setCategoryError(null);
+    setCategoryMessage(null);
+    const name = newCategoryName.trim();
+    if (name.length < 2) {
+      setCategoryError("Enter a category name with at least 2 characters.");
+      return;
+    }
+    setBusyId("category");
+    const { data, error } = await supabase.rpc("create_category", { p_name: name });
+    setBusyId(null);
+    if (error) {
+      setCategoryError(error.message);
+      return;
+    }
+    if (data) {
+      setCategories((current) => [...current, data as CategoryRow].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)));
+    }
+    setNewCategoryName("");
+    setCategoryMessage(`“${name}” is now available when posting an event.`);
+  }
+
   async function uploadWallpaper(file: File) {
     if (!user) return;
     setBusyId("wallpaper");
@@ -108,6 +140,15 @@ export function AdminModerationPage() {
     else refresh();
   }
 
+  async function changeEventCategory(eventId: string, categoryId: string) {
+    if (!supabase || !categoryId) return;
+    setBusyId(`category-${eventId}`);
+    const { error } = await supabase.from("events").update({ category_id: categoryId }).eq("id", eventId);
+    setBusyId(null);
+    if (error) alert(error.message);
+    else refresh();
+  }
+
   async function approveRefund(refundId: string) {
     if (!supabase || !user) return;
     setBusyId(refundId);
@@ -150,6 +191,33 @@ export function AdminModerationPage() {
         {wallpaperError && <p className="mt-3 text-sm text-rust" role="alert">{wallpaperError}</p>}
       </Card>
 
+      <Card className="mt-6 p-5">
+        <div>
+          <h2 className="font-display text-xl text-ink dark:text-ink-dark">Event categories</h2>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+            These categories appear on the landing page and in the event-posting selector. Add one when the existing list does not fit an event.
+          </p>
+        </div>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={newCategoryName}
+            onChange={(event) => setNewCategoryName(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") void addCategory(); }}
+            placeholder="e.g. Food & Dining"
+            aria-label="New category name"
+            maxLength={80}
+          />
+          <Button disabled={busyId === "category"} onClick={() => void addCategory()}>
+            {busyId === "category" ? "Adding…" : "Add category"}
+          </Button>
+        </div>
+        {categoryError && <p className="mt-2 text-sm text-rust" role="alert">{categoryError}</p>}
+        {categoryMessage && <p className="mt-2 text-sm text-sage" role="status">{categoryMessage}</p>}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {categories.map((category) => <Badge key={category.id} tone="saffron">{category.name}</Badge>)}
+        </div>
+      </Card>
+
       <section className="mt-8">
         <h2 className="font-display text-xl text-ink dark:text-ink-dark">Organiser applications</h2>
         <div className="mt-3 space-y-3">
@@ -186,12 +254,23 @@ export function AdminModerationPage() {
               <Card key={event.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Badge tone="saffron">{event.category?.name}</Badge>
                     <span className="font-medium text-ink dark:text-ink-dark">{event.title}</span>
                   </div>
                   <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
                     {formatEventDate(event.starts_at)} · {event.venue?.name}, {event.venue?.town}
                   </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <label htmlFor={`category-${event.id}`} className="text-xs text-ink-soft dark:text-ink-soft-dark">Category</label>
+                    <Select
+                      id={`category-${event.id}`}
+                      value={event.category_id}
+                      disabled={busyId === `category-${event.id}`}
+                      onChange={(change) => void changeEventCategory(event.id, change.target.value)}
+                      className="min-w-44 py-1 text-sm"
+                    >
+                      {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </Select>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
