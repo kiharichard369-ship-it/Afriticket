@@ -12,8 +12,8 @@ phases).
   `src/index.css` for the design tokens)
 - React Router
 - Radix UI primitives (dialog) for accessible menus and modals
-- Supabase (Postgres + Auth) — schema ready in `/supabase`, not yet wired
-  into the frontend (see below)
+- Supabase (Postgres + Auth) — schema and checkout flow in `/supabase`,
+  enabled in the frontend when configured (see below)
 
 ## Getting started
 
@@ -55,7 +55,7 @@ src/
   pages/
     DiscoveryPage.tsx        "/" — search, filters, results grid
     EventDetailPage.tsx      "/events/:slug" — full details + ticket
-                             preview dialog (explicitly fixture-only)
+                             checkout/preview dialog
     CalendarPage.tsx         "/calendar" — month grid + day filtering
     NotFoundPage.tsx
   pages/  (continued)
@@ -68,7 +68,7 @@ src/
     AccountSettingsPage.tsx           Data export (JSON download) and account deletion
     AdminModerationPage.tsx           Platform staff: approve applications,
                                        publish/send-back events, approve refunds
-  components/events/CheckoutDialog.tsx  Real hold -> order -> payment flow
+  components/events/CheckoutDialog.tsx  Mixed-ticket hold -> order -> payment flow
   context/AuthContext.tsx             Supabase auth session state
   hooks/
     useOrganisation.ts                Current user's organisation membership
@@ -78,11 +78,13 @@ src/
 supabase/
   migrations/                Full schema through payments, check-in,
                              refunds, rate limiting, the public-data-leak
-                             fix, operational metrics, and data export/
-                             deletion (14 files total)
+                             fix, operational metrics, data export/deletion,
+                             mixed-ticket checkout, and notification delivery
+                             scaffolding (18 files total)
   functions/                 Edge Functions: initiate-payment, mpesa-webhook,
-                             and the mock/M-Pesa payment adapters, each with
-                             its own Deno test file — see functions/README.md
+                             deliver-notifications, and the mock/M-Pesa plus
+                             notification provider adapters — see
+                             functions/README.md
   seed.sql                   Non-sensitive demo data
   README.md                  How to run the migrations, and how the
                               concurrency/authorization logic was tested
@@ -138,10 +140,10 @@ Built and tested against a real local Postgres before shipping (see
   enforced by a DB trigger, not just hidden in the UI, because RLS alone
   can't compare old vs. new column values on an UPDATE.
 
-Not yet built (Phase 3, by design): payment initiation/webhooks, ticket
-issuance, check-in, refunds. The event-detail ticket dialog still stops at
-a labelled "preview" rather than calling the real hold/order functions,
-since there's no payment step yet to hand off to.
+Payment initiation/webhooks, ticket issuance, check-in, and refunds are now
+implemented in Phase 3. The event-detail ticket dialog uses the mixed-ticket
+hold/order/payment flow when Supabase is configured and remains an honest
+preview when it is not.
 
 ## Phase 3: checkout, payments, tickets, and check-in
 
@@ -151,10 +153,10 @@ real Deno runtime — see `/supabase/README.md` and
 `/supabase/functions/README.md` for the full test transcripts):
 
 - **Checkout dialog** (`CheckoutDialog.tsx`) now does the real thing once
-  Supabase is configured: creates a ticket hold, creates a pending order,
-  and calls the `initiate-payment` Edge Function — falling back to the old
-  preview-only behaviour when Supabase isn't set up yet. Currently one
-  ticket type per order; a mixed cart is a documented next step.
+  Supabase is configured: atomically holds all selected ticket types, creates
+  one pending order with server-computed line prices/totals, and calls the
+  `initiate-payment` Edge Function — falling back to the old preview-only
+  behaviour when Supabase isn't set up yet.
 - **Payment adapters**: a deterministic mock provider (a phone number
   ending in "00" fails, everything else succeeds — for local dev and
   demos) and a real M-Pesa Daraja STK Push client, both behind the same
@@ -183,9 +185,12 @@ real Deno runtime — see `/supabase/README.md` and
   refund isn't wired up yet — Daraja's B2C reversal API needs a separate
   credential — so approved refunds are a manual payout for now.
 
-Not yet built, by design: real email/SMS ticket delivery (the
-`notifications` row is queued but nothing sends it), a scheduled call to
-`expire_stale_holds()`, and M-Pesa's actual refund API.
+Notification delivery now has a provider-neutral, leased worker contract and
+pure handler tests under `supabase/functions/deliver-notifications/`, but it
+is **not live by default**: real delivery still requires provider credentials,
+sender approval, migration 0018, and an external schedule. Hold expiry also
+requires a separately configured schedule for `expire_stale_holds()`. M-Pesa's
+actual refund API remains deliberately unimplemented.
 
 ## Phase 4: hardening, operations, accessibility, and launch prep
 

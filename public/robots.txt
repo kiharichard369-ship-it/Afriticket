@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Private account and organiser tools should not be crawled.
+Disallow: /login
+Disallow: /signup
+Disallow: /account
+Disallow: /my-tickets
+Disallow: /organiser/dashboard
+Disallow: /organiser/events/
+Disallow: /admin/
+
+Sitemap: https://ticketyangu.online/sitemap.xml

@@ -14,7 +14,7 @@ produced exactly `checkout_success_rate_pct = 50.0`).
 | `metric_payment_reconciliation` | Payments initiated/succeeded/failed per hour per provider, average/max time-to-confirm | `avg_reconciliation_seconds` climbing, or `payments_still_open` growing |
 | `metric_stuck_payments` | Individual payments open >15 minutes | Any row appearing at all, for more than a few minutes |
 | `metric_refund_rate` | Refunds requested/approved/rejected per day, amount refunded | An unusual spike for one event |
-| `metric_notification_backlog` | Queued (unsent) notifications by channel/template | Anything queued for more than a few minutes — the delivery worker isn't built yet (see functions/README.md), so right now this will always show a backlog; wire up delivery before treating this as a real alert |
+| `metric_notification_backlog` | Queued (unsent) notifications by channel/template | Anything queued for more than a few minutes — check the worker schedule, provider status, and lease/attempt fields before requeueing |
 | `metric_checkin_conflicts` | Tickets scanned more than once | Any row where results include two `valid`s in a row (shouldn't be possible — `check_in_ticket` locks the row — investigate as a possible bug, not just an operational event) |
 | `metric_webhook_health` | Webhook events received vs. processed per hour | `events_received > events_processed` sustained over multiple hours |
 
@@ -45,13 +45,39 @@ select * from public.metric_stuck_payments;
    Safaricom's own transaction status API, then call `confirm_payment_and_issue_tickets`
    or `fail_payment` by hand via the SQL editor with the service role.
 
-### Notification (email/SMS) outage — once the delivery worker exists
+### Notification (email/SMS/WhatsApp) outage
 
-Not built yet (see functions/README.md) — when it is, this runbook's
-first step is: check `metric_notification_backlog`, then check the
-delivery provider's own status/logs, then requeue by resetting affected
-rows' `status` back to `'queued'` and re-running the worker. Documented
-now so the shape of the runbook exists before the code does.
+1. Check `metric_notification_backlog`, then inspect the provider's status and
+   the `deliver-notifications` function logs using its request ID.
+2. Check `notifications.attempt_count`, `last_error`, `locked_by`, and
+   `locked_until`. An unexpired lease is normally an in-flight attempt; do not
+   manually clear it unless the worker is known to be stopped.
+3. Provider calls use the notification UUID as their idempotency key. If a
+   provider call may have succeeded but the state write failed, let the lease
+   expire and retry with the same key rather than creating a new notification.
+4. The worker marks provider failures as `failed`; requeue only after the
+   provider incident is understood, with a deliberate, audited SQL change:
+   ```sql
+   update public.notifications
+   set status = 'queued', locked_by = null, locked_until = null,
+       next_attempt_at = null, last_error = null
+   where id = '<notification_id>' and status = 'failed';
+   ```
+5. If provider credentials are not configured, this is expected scaffolding
+   behavior, not a transient outage: do not claim delivery is live.
+
+### Scheduled maintenance
+
+Run hold expiry independently from notification delivery, at least once per
+minute through pg_cron or a scheduled SQL/Edge Function invocation:
+
+```sql
+select public.expire_stale_holds();
+```
+
+The notification worker's scheduler should POST to the private function with
+`x-worker-secret` and keep JWT verification enabled. Neither schedule is
+created automatically by the migration.
 
 ### Duplicate webhook delivery
 
@@ -109,8 +135,9 @@ to actually cause this in practice — audit for that first.
    select id, reference, buyer_email, total_minor, status
    from public.orders where event_id = '<event_id>' and status = 'paid';
    ```
-3. Notify buyers (manually, until the notification worker exists) and
-   process refunds per your refund policy — see the "decisions to
+3. Queue buyer notifications through the worker only after provider
+   credentials and sender identity are configured; otherwise notify buyers
+   manually. Process refunds per your refund policy — see the "decisions to
    confirm" list in `DEPLOYMENT.md`.
 
 ### Data restoration

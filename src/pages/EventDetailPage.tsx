@@ -10,8 +10,9 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Skeleton } from "../components/ui/Skeleton";
 import { EmptyState } from "../components/ui/EmptyState";
-import { categoryVisual } from "../components/events/categoryVisual";
 import { CheckoutDialog } from "../components/events/CheckoutDialog";
+import { EventImage } from "../components/events/EventImage";
+import { SeoMetadata } from "../components/seo/SeoMetadata";
 
 export function EventDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -26,18 +27,31 @@ export function EventDetailPage() {
 
   if (event === undefined) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4 px-6 py-10">
+      <>
+        <SeoMetadata
+          title="Event details — Ticketyangu"
+          description="View event details, venue information, and ticket options on Ticketyangu."
+          canonicalPath={slug ? `/events/${slug}` : "/"}
+        />
+        <div className="mx-auto max-w-4xl space-y-4 px-6 py-10">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-56 w-full" />
         <Skeleton className="h-8 w-2/3" />
         <Skeleton className="h-24 w-full" />
-      </div>
+        </div>
+      </>
     );
   }
 
   if (event === null) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
+        <SeoMetadata
+          title="Event not found — Ticketyangu"
+          description="This event is no longer available. Browse current events across Kenya on Ticketyangu."
+          canonicalPath="/"
+          noIndex
+        />
         <EmptyState
           title="We couldn't find that event"
           description="It may have sold out, been cancelled, or the link may be out of date."
@@ -48,13 +62,24 @@ export function EventDetailPage() {
     );
   }
 
-  const { icon: Icon, gradient } = categoryVisual(event.category.slug);
-
   return (
     <article>
-      <div className={`flex h-56 items-center justify-center bg-gradient-to-br sm:h-72 ${gradient}`}>
-        <Icon className="h-16 w-16 text-paper/90" />
-      </div>
+      <SeoMetadata
+        title={`${event.title} — Ticketyangu`}
+        description={`${event.title} in ${event.venue.town}: ${event.description}`}
+        canonicalPath={`/events/${event.slug}`}
+        imageUrl={event.coverImageUrl}
+        type="article"
+      />
+      <EventImage
+        src={event.coverImageUrl}
+        alt={`${event.title} event cover`}
+        categorySlug={event.category.slug}
+        className="aspect-[2/1] sm:aspect-[3/1]"
+        imageClassName="object-center"
+        loading="eager"
+        sizes="100vw"
+      />
 
       <div className="mx-auto max-w-4xl px-6 py-8">
         <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink dark:text-ink-soft-dark dark:hover:text-ink-dark">

@@ -48,9 +48,19 @@ each one into the Supabase SQL Editor, or with the Supabase CLI.
 14. `20260101000014_data_export_and_deletion.sql` — `export_my_data()` and
     `request_account_deletion()` (anonymize-and-keep-records, not a hard
     delete — financial records need to survive for accounting retention).
+15. `20260101000015_landing_page_settings.sql` — landing-page settings and
+    featured-event/newsletter support.
+16. `20260101000016_wallpaper_storage_bucket.sql` — the public site-assets
+    wallpaper bucket and platform-staff storage policies.
+17. `20260101000017_multi_ticket_checkout.sql` — atomic mixed-ticket holds,
+    server-priced multi-item orders, and multi-hold payment confirmation.
+18. `20260101000018_notification_delivery_worker.sql` — leased notification
+    queue claims, provider-safe delivery state transitions, and retry metadata.
 
 Run them strictly in order — later files depend on tables, views, and
-functions created earlier.
+functions created earlier. Migration 0018 does not change payment success,
+ticket issuance, inventory, or order status semantics; it only adds the
+post-confirmation notification delivery contract.
 
 ## Further reading
 
@@ -74,7 +84,7 @@ types. Safe to run in any environment, including production.
 ## Using the Supabase CLI instead
 
 If you'd rather use `supabase db push` / `supabase migration up`, copy the
-nine files in `migrations/` into your project's own `supabase/migrations`
+17 files in `migrations/` into your project's own `supabase/migrations`
 folder (same names, so they keep their order) and run:
 
 ```
@@ -181,7 +191,7 @@ add a minimal `auth.users` table and an `auth.uid()` stub reading a
 `request.jwt.claim.sub` session variable (Supabase provides both for real;
 this is just to approximate them locally), create `anon`/`authenticated`/
 `service_role` roles, grant them table access the way Supabase's platform
-does by default, then apply the nine migration files in order and drive
+does by default, then apply the migrations in order and drive
 `select public.create_ticket_hold(...)` etc. directly.
 
 ## What's deliberately not here yet
@@ -190,21 +200,20 @@ does by default, then apply the nine migration files in order and drive
   added when the media-upload flow is built, so the bucket policies match
   the actual upload path.
 - **Payment adapter + webhook processing** (M-Pesa/card) and **ticket
-  issuance** — `create_pending_order` gets a checkout to "pending"; moving
-  it to "paid" and generating tickets needs a real payment provider
-  contract, so it's not built yet.
-- **A scheduled call to `expire_stale_holds()`** — the function exists and
-  is tested, but nothing invokes it on a timer yet. Wire it to Supabase's
-  pg_cron (`select cron.schedule('expire-holds', '* * * * *', 'select
-  public.expire_stale_holds()')`) or a scheduled Edge Function once you're
-  ready.
-- The event-detail ticket dialog in the frontend still stops at "preview" —
-  it doesn't call `create_ticket_hold`/`create_pending_order` yet, since
-  there's no payment step for it to hand off to.
+  issuance** are implemented by the `initiate-payment` and `mpesa-webhook`
+  Edge Functions. They still require provider credentials for real money
+  movement; the mock adapter remains suitable for local development.
+- **Schedules** — migration 0018 documents the notification worker contract,
+  but it does not create a timer. Wire both the private worker invocation and
+  `select public.expire_stale_holds();` to pg_cron or a scheduled Edge
+  Function before relying on background processing.
+- The event-detail ticket dialog uses migration 0017's mixed-ticket RPCs once
+  Supabase is configured. Without Supabase credentials it intentionally keeps
+  the preview-only behavior.
 
 ## Connecting the frontend
 
-Create a Supabase project, run the nine migrations above (and optionally
+Create a Supabase project, run the migrations above (and optionally
 `seed.sql`), then fill in `.env` at the project root (see `.env.example`)
 with your project URL and anon key from Project Settings → API. The
 frontend picks this up automatically: `src/repositories/eventsRepository.ts`

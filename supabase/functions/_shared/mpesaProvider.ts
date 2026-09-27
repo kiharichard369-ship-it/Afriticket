@@ -60,14 +60,14 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
         BusinessShortCode: this.config.shortcode,
         Password: password,
         Timestamp: timestamp,
-        TransactionType: "CustomerPayBillOnline",
+        TransactionType: "CustomerBuyGoodsOnline",
         Amount: Math.round(params.amountMinor / 100),
         PartyA: params.phoneNumber,
-        PartyB: this.config.shortcode,
+        PartyB: "",
         PhoneNumber: params.phoneNumber,
         CallBackURL: this.config.callbackUrl,
-        AccountReference: params.orderReference,
-        TransactionDesc: `Ticketyangu order ${params.orderReference}`,
+        AccountReference: "Afriticket",
+        TransactionDesc: "Payment for Afriticket",
       }),
     });
 

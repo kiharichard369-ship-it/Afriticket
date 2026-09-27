@@ -13,6 +13,7 @@ type Step = "select" | "phone" | "processing" | "success" | "failed" | "pending"
 export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDetail; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { user } = useAuth();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [sessionKey, setSessionKey] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("select");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -27,6 +28,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
     setStep("select");
     setError(null);
     setQuantities({});
+    setSessionKey(crypto.randomUUID());
   }
 
   function close() {
@@ -36,10 +38,6 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   }
 
   function goToPhoneStep() {
-    if (selectedTypes.length > 1) {
-      setError("For now, checkout supports one ticket type per order — pick a single type, then check out again for another.");
-      return;
-    }
     if (!isSupabaseConfigured) {
       // Phase 1/2 behaviour preserved: preview-only when there's no backend yet.
       close();
@@ -50,34 +48,47 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   }
 
   async function submitCheckout() {
-    if (!supabase || selectedTypes.length !== 1) return;
-    const ticketType = selectedTypes[0];
-    const quantity = quantities[ticketType.id];
+    if (!supabase || selectedTypes.length === 0) return;
+    const db = supabase;
     setStep("processing");
     setError(null);
 
     try {
-      const { data: hold, error: holdError } = await supabase
-        .rpc("create_ticket_hold", {
-          p_ticket_type_id: ticketType.id,
-          p_quantity: quantity,
-          p_session_key: crypto.randomUUID(),
-        })
-        .single();
+      // Only opaque ticket IDs and quantities leave the browser. The database
+      // function locks inventory rows and computes the actual holds.
+      const { data: holds, error: holdError } = await db.rpc("create_ticket_holds", {
+        p_event_id: event.id,
+        p_items: selectedTypes.map((ticketType) => ({
+          ticket_type_id: ticketType.id,
+          quantity: quantities[ticketType.id] ?? 0,
+        })),
+        p_session_key: sessionKey,
+      });
       if (holdError) throw new Error(holdError.message.replace(/^sold_out: /, ""));
 
-      const idempotencyKey = crypto.randomUUID();
-      const { data: order, error: orderError } = await supabase
-        .rpc("create_pending_order", {
-          p_hold_id: (hold as { id: string }).id,
-          p_buyer_email: email || null,
-          p_buyer_phone: phone || null,
-          p_idempotency_key: idempotencyKey,
-        })
-        .single();
-      if (orderError) throw new Error(orderError.message);
+      const holdRows = (holds ?? []) as Array<{ id: string }>;
+      if (holdRows.length !== selectedTypes.length || holdRows.some((hold) => !hold.id)) {
+        throw new Error("The server did not create all checkout holds. Please try again.");
+      }
+      const holdIds = holdRows.map((hold) => hold.id);
 
-      const { data: initiation, error: fnError } = await supabase.functions.invoke("initiate-payment", {
+      const { data: order, error: orderError } = await db.rpc("create_pending_order_multi", {
+        p_hold_ids: holdIds,
+        p_session_key: sessionKey,
+        p_buyer_email: email || null,
+        p_buyer_phone: phone || null,
+        p_idempotency_key: crypto.randomUUID(),
+      }).single();
+      if (orderError) {
+        // Keep hold release authoritative: the existing server-side expiry
+        // sweep/just-in-time expiry handles failed order creation, while
+        // payment failures are released by fail_payment on the server.
+        throw new Error(orderError.message);
+      }
+
+      const { data: initiation, error: fnError } = await db.functions.invoke("initiate-payment", {
+        // The Edge Function reads order.total_minor from the database. Do not
+        // send the client-estimated total or line prices to the payment path.
         body: { orderId: (order as { id: string }).id, phoneNumber: phone },
       });
       if (fnError) {
@@ -87,7 +98,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       }
 
       if (initiation.status === "succeeded") {
-        setTicketsIssued(initiation.ticketsIssued ?? quantity);
+        setTicketsIssued(initiation.ticketsIssued ?? totalQty);
         setStep("success");
       } else if (initiation.status === "pending") {
         setStep("pending");
@@ -100,6 +111,8 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       setStep("error");
     }
   }
+
+  const selectedTypeNames = selectedTypes.map((ticketType) => ticketType.name).join(", ");
 
   return (
     <Dialog
@@ -169,7 +182,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       {step === "phone" && (
         <div className="space-y-4">
           <p className="text-sm text-ink-soft dark:text-ink-soft-dark">
-            {formatKes(totalMinor)} for {totalQty} × {selectedTypes[0]?.name}
+            {formatKes(totalMinor)} estimated for {totalQty} ticket{totalQty === 1 ? "" : "s"}: {selectedTypeNames}
           </p>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">M-Pesa phone number</label>
@@ -180,7 +193,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <Button className="w-full" disabled={!phone || !email} onClick={submitCheckout}>
-            Pay {formatKes(totalMinor)}
+            Continue to payment
           </Button>
           <button onClick={() => setStep("select")} className="w-full text-center text-sm text-ink-soft hover:underline dark:text-ink-soft-dark">
             Back
@@ -216,7 +229,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       {(step === "failed" || step === "error") && (
         <div className="space-y-4 py-4 text-center">
           <p className="text-rust">{error ?? "Something went wrong."}</p>
-          <Button variant="outline" onClick={() => setStep("select")}>Try again</Button>
+          <Button variant="outline" onClick={() => { setSessionKey(crypto.randomUUID()); setStep("select"); }}>Try again</Button>
         </div>
       )}
     </Dialog>

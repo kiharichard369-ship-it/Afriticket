@@ -8,7 +8,7 @@ within one project, and sharing a project means a bad migration or a
 sandbox M-Pesa test payment touches real data. For each project
 separately:
 
-1. Run all 14 migrations in order (`/supabase/README.md`).
+1. Run all 18 migrations in order (`/supabase/README.md`).
 2. Run `seed.sql` only in staging — never in production (it's harmless
    there too, but there's no reason to).
 3. Deploy both Edge Functions with that project's own secrets
@@ -22,9 +22,10 @@ separately:
 
 Migrations are plain numbered SQL files, run in order, forward-only —
 there are no "down" migrations in this project. For a new environment,
-running all 14 in sequence is the whole procedure (verified repeatedly
-throughout Phases 2–4: every clean rebuild from an empty database with
-all 14 files applied without error).
+running all 18 in sequence is the whole procedure. The first 16 migrations
+were verified repeatedly throughout Phases 2–4; migrations 0017 and 0018 are
+forward-only additions and should be smoke-tested in staging before
+production.
 
 **Rollback procedure**, since there's no automated down-migration: take a
 `pg_dump` backup *before* applying a new migration to any environment
@@ -71,6 +72,27 @@ so nothing secret goes here):**
 | `MPESA_WEBHOOK_SECRET` | Only if mpesa | The same secret from the URL above |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Auto-injected | Don't set these yourself |
 
+**Notification worker secrets (only when delivery is intentionally enabled):**
+
+| Variable | Required | Notes |
+|---|---|---|
+| `NOTIFICATION_WORKER_SECRET` | Yes for worker | Long random value checked via `x-worker-secret`; never ship to the browser |
+| `NOTIFICATION_EMAIL_PROVIDER` | No | `resend` or `disabled` (default) |
+| `RESEND_API_KEY` / `NOTIFICATION_EMAIL_FROM` | If email provider is `resend` | Provider credential and approved sender identity |
+| `NOTIFICATION_SMS_PROVIDER` | No | `twilio` or `disabled` (default) |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `NOTIFICATION_SMS_FROM` | If SMS provider is `twilio` | Twilio credential and sender ID/number |
+| `NOTIFICATION_WHATSAPP_PROVIDER` | No | `twilio` or `disabled` (default) |
+| `NOTIFICATION_WHATSAPP_FROM` | If WhatsApp provider is `twilio` | Twilio WhatsApp sender, e.g. `whatsapp:+...` |
+| `NOTIFICATION_EMAIL_API_URL` / `NOTIFICATION_TWILIO_API_URL` | No | Optional endpoint overrides for controlled environments |
+| `NOTIFICATION_LEASE_SECONDS` | No | 30–3600 seconds; defaults to 300 |
+
+Deploy `deliver-notifications` only after migration 0018 is applied. Keep JWT
+verification enabled and invoke it from a private scheduler with the worker
+secret header. The repository contains adapters and tests, but **no provider
+credentials are present and no delivery is live by default**. Configure and
+verify a real provider in staging before saying that ticket email/SMS/
+WhatsApp delivery is operational.
+
 ## Decisions that must be confirmed before a real launch
 
 Carried over from the original build playbook — these change money
@@ -80,8 +102,8 @@ owner decisions, not engineering defaults:
 - [ ] **Payment credentials**: production M-Pesa shortcode, passkey, and
       consumer key/secret — confirmed with Safaricom, not just sandbox.
 - [ ] **Notification sender identity**: what email address/SMS sender ID
-      tickets and confirmations come from (not built yet — see
-      functions/README.md — but the identity needs deciding before it is).
+      tickets and confirmations come from; configure and verify it with the
+      chosen provider before enabling the worker.
 - [ ] **Organiser verification policy**: what, if anything, beyond the
       application form (`organiser_applications`) is checked before
       approval — business registration, ID, a phone call?
@@ -94,8 +116,8 @@ owner decisions, not engineering defaults:
       from ticket sales — not built at all; `orders`/`payments` track
       buyer-to-platform money movement only, nothing platform-to-organiser.
 - [ ] **WhatsApp channel**: transactional (ticket delivery) or
-      support-only? The `notification_channel` enum includes `whatsapp`
-      but nothing sends through it yet.
+      support-only? The `notification_channel` enum and Twilio adapter support
+      it, but provider approval and credentials are still required.
 - [ ] **Free/donation events**: `is_free` exists and Phase 1's fixtures
       use it, but there's no actual donation-collection flow — confirm
       whether "free" events need anything beyond a KES 0 ticket type.
@@ -135,10 +157,12 @@ built as a page yet.
   could support a cart with more work).
 - M-Pesa refunds are a manual payout — the B2C reversal API needs a
   separate credential not yet set up (`SECURITY.md`/functions/README.md).
-- No scheduled sweep for `expire_stale_holds()` — wire it to pg_cron or a
-  scheduled function before relying on holds reliably self-clearing under
-  load.
-- No email/SMS delivery — `notifications` rows queue but nothing sends.
+- Hold expiry and notification delivery both require operational schedules:
+  run `select public.expire_stale_holds();` at least every minute, and invoke
+  the private `deliver-notifications` function at a cadence appropriate for
+  the configured provider. Neither schedule is created by migrations.
+- No delivery is live without provider credentials and sender approval;
+  queued rows remain queued when notification providers are disabled.
 - No camera-based check-in scanning — manual code entry only.
 - Rate limiting on checkout is session-key-based, not IP-based — see
   `SECURITY.md` API4 for what that does and doesn't protect against.
@@ -151,7 +175,10 @@ built as a page yet.
 2. `npm run lint` — zero errors (warnings are pre-existing and reviewed).
 3. `deno test --allow-net --allow-read --allow-env supabase/functions` —
    20/20 passing.
-4. Run all 14 migrations against a fresh database — verified clean.
+4. Run all 18 migrations against a fresh database — smoke-test migrations
+   0017 and 0018 in staging before production. Confirm
+   `expire_stale_holds()` and the private notification worker are both
+   scheduled; migrations do not create schedules.
 5. With `PAYMENT_PROVIDER=mock`: browse events → pick tickets → complete
    checkout with a phone number NOT ending in "00" → confirm a ticket
    appears under "My tickets" with a scannable QR code.
@@ -160,6 +187,10 @@ built as a page yet.
    public discovery page.
 7. As check-in staff: scan the ticket code from step 5 → confirm `valid`,
    scan it again → confirm `already_used`.
-8. Do not claim production readiness while `PAYMENT_PROVIDER=mock` in a
+8. If notification delivery is enabled, test a provider with staging
+   credentials, duplicate the same worker request, and confirm one external
+   message plus an idempotent terminal row state. Without provider credentials
+   this feature is scaffolding only; do not claim delivery is live.
+9. Do not claim production readiness while `PAYMENT_PROVIDER=mock` in a
    production project, or while any item in the decisions checklist above
    is unchecked.

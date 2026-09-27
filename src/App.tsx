@@ -16,11 +16,14 @@ import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { AccountSettingsPage } from "./pages/AccountSettingsPage";
 import { AdminModerationPage } from "./pages/AdminModerationPage";
 import { RequireAuth, RequireOrganiser, RequirePlatformStaff } from "./components/auth/RouteGuards";
+import { RouteSeo } from "./components/seo/RouteSeo";
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
+    <>
+      <RouteSeo />
+      <Routes>
+        <Route element={<Layout />}>
         <Route index element={<DiscoveryPage />} />
         <Route path="events/:slug" element={<EventDetailPage />} />
         <Route path="calendar" element={<CalendarPage />} />
@@ -78,7 +81,8 @@ export default function App() {
           }
         />
         <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+        </Route>
+      </Routes>
+    </>
   );
 }

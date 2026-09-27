@@ -5,10 +5,11 @@ import { formatEventDate, formatEventTime } from "../../lib/date";
 import { formatKes } from "../../lib/currency";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
+import { EventImage } from "./EventImage";
 import { categoryVisual } from "./categoryVisual";
 
 export function EventCard({ event, index = 0 }: { event: EventSummary; index?: number }) {
-  const { icon: Icon, gradient, glow } = categoryVisual(event.category.slug);
+  const { glow } = categoryVisual(event.category.slug);
   const soldOut = event.status === "sold_out";
 
   return (
@@ -17,9 +18,13 @@ export function EventCard({ event, index = 0 }: { event: EventSummary; index?: n
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <Link to={`/events/${event.slug}`} className="flex flex-1 flex-col focus:outline-none">
-        <div className={`relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br ${gradient}`}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.25),transparent_60%)]" />
-          <Icon className="h-10 w-10 text-white drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" />
+        <div className="relative">
+          <EventImage
+            src={event.coverImageUrl}
+            alt={`${event.title} event cover`}
+            categorySlug={event.category.slug}
+            imageClassName="transition-transform duration-300 group-hover:scale-105"
+          />
           {soldOut && (
             <span className="absolute right-3 top-3">
               <Badge tone="rust" className="bg-paper text-rust shadow-sm">Sold out</Badge>
