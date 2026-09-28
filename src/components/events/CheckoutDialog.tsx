@@ -7,6 +7,20 @@ import { formatKes } from "../../lib/currency";
 import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+
+const M_PESA_COUNTRIES = [
+  { code: "KE", name: "Kenya", dialCode: "254" },
+  { code: "TZ", name: "Tanzania", dialCode: "255" },
+  { code: "MZ", name: "Mozambique", dialCode: "258" },
+  { code: "CD", name: "DR Congo", dialCode: "243" },
+  { code: "LS", name: "Lesotho", dialCode: "266" },
+  { code: "ET", name: "Ethiopia", dialCode: "251" },
+] as const;
+
+function normalizeLocalPhone(value: string) {
+  return value.replace(/\D/g, "").replace(/^0+/, "");
+}
 
 type Step = "select" | "phone" | "processing" | "success" | "failed" | "pending" | "error";
 
@@ -16,6 +30,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   const [sessionKey, setSessionKey] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("select");
   const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState("KE");
   const [email, setEmail] = useState(user?.email ?? "");
   const [error, setError] = useState<string | null>(null);
   const [ticketsIssued, setTicketsIssued] = useState(0);
@@ -23,6 +38,9 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   const totalMinor = event.ticketTypes.reduce((sum, t) => sum + t.priceMinor * (quantities[t.id] ?? 0), 0);
   const totalQty = Object.values(quantities).reduce((a, b) => a + b, 0);
   const selectedTypes = event.ticketTypes.filter((t) => (quantities[t.id] ?? 0) > 0);
+  const selectedPhoneCountry = M_PESA_COUNTRIES.find((country) => country.code === phoneCountry) ?? M_PESA_COUNTRIES[0];
+  const localPhone = normalizeLocalPhone(phone);
+  const internationalPhone = `${selectedPhoneCountry.dialCode}${localPhone}`;
 
   function reset() {
     setStep("select");
@@ -49,6 +67,10 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
 
   async function submitCheckout() {
     if (!supabase || selectedTypes.length === 0) return;
+    if (localPhone.length < 7 || localPhone.length > 12) {
+      setError("Enter a valid local phone number using digits only.");
+      return;
+    }
     const db = supabase;
     setStep("processing");
     setError(null);
@@ -76,7 +98,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
         p_hold_ids: holdIds,
         p_session_key: sessionKey,
         p_buyer_email: email || null,
-        p_buyer_phone: phone || null,
+        p_buyer_phone: internationalPhone || null,
         p_idempotency_key: crypto.randomUUID(),
       }).single();
       if (orderError) {
@@ -89,7 +111,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       const { data: initiation, error: fnError } = await db.functions.invoke("initiate-payment", {
         // The Edge Function reads order.total_minor from the database. Do not
         // send the client-estimated total or line prices to the payment path.
-        body: { orderId: (order as { id: string }).id, phoneNumber: phone },
+        body: { orderId: (order as { id: string }).id, phoneNumber: internationalPhone },
       });
       if (fnError) {
         throw new Error(
@@ -186,13 +208,28 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
           </p>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">M-Pesa phone number</label>
-            <Input placeholder="2547XXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-2">
+              <Select aria-label="M-Pesa country" value={phoneCountry} onChange={(e) => setPhoneCountry(e.target.value)}>
+                {M_PESA_COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>{country.name} (+{country.dialCode})</option>
+                ))}
+              </Select>
+              <Input
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                placeholder="712345678"
+                value={phone}
+                onChange={(e) => setPhone(normalizeLocalPhone(e.target.value))}
+              />
+            </div>
+            <p className="mt-1 text-xs text-ink-faint">Enter the local number only, without the leading 0. Payment number: +{internationalPhone}</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Email (for your ticket)</label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          <Button className="w-full" disabled={!phone || !email} onClick={submitCheckout}>
+          <Button className="w-full" disabled={localPhone.length < 7 || localPhone.length > 12 || !email} onClick={submitCheckout}>
             Continue to payment
           </Button>
           <button onClick={() => setStep("select")} className="w-full text-center text-sm text-ink-soft hover:underline dark:text-ink-soft-dark">
@@ -209,7 +246,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
 
       {step === "pending" && (
         <div className="space-y-4 py-4 text-center">
-          <p className="text-ink dark:text-ink-dark">An M-Pesa prompt has been sent to {phone}. Enter your PIN to complete payment.</p>
+          <p className="text-ink dark:text-ink-dark">An M-Pesa prompt has been sent to +{internationalPhone}. Enter your PIN to complete payment.</p>
           <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Once confirmed, your tickets will appear under "My tickets".</p>
           <Button variant="outline" onClick={close}>Close</Button>
         </div>
