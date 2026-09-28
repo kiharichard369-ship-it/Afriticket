@@ -10,7 +10,7 @@ import { Select } from "../components/ui/Select";
 import { formatEventDate } from "../lib/date";
 import { formatKes } from "../lib/currency";
 import type { CategoryRow, EventRow, OrganiserApplicationRow } from "../types/database";
-import { siteSettingsRepository } from "../repositories/siteSettingsRepository";
+import { siteSettingsRepository, type ThemeEvent } from "../repositories/siteSettingsRepository";
 
 interface RefundRow {
   id: string;
@@ -63,6 +63,9 @@ export function AdminModerationPage() {
   const [wallpaperError, setWallpaperError] = useState<string | null>(null);
   const [wallpaperMessage, setWallpaperMessage] = useState<string | null>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
+  const [themeEvents, setThemeEvents] = useState<ThemeEvent[]>([]);
+  const [selectedThemeEventId, setSelectedThemeEventId] = useState("");
+  const [themeEventUntil, setThemeEventUntil] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [newCategoryNames, setNewCategoryNames] = useState("");
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -79,13 +82,14 @@ export function AdminModerationPage() {
 
   async function refresh() {
     if (!supabase) return;
-    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }, { data: auditRows }] = await Promise.all([
+    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }, { data: auditRows }, { data: themeRows }] = await Promise.all([
       supabase.from("organiser_applications").select("*").eq("status", "pending").order("created_at"),
       supabase.from("events").select("*, category:categories(*), venue:venues(*)").eq("status", "pending_review").order("created_at"),
       supabase.from("refunds").select("id, order_id, amount_minor, reason, order:orders(reference)").eq("status", "requested").order("created_at"),
       supabase.from("categories").select("*").order("sort_order").order("name"),
       supabase.rpc("list_platform_staff"),
       supabase.rpc("list_platform_role_audit", { p_limit: 50 }),
+      supabase.from("events_public").select("id, title, cover_image_url, starts_at").not("cover_image_url", "is", null).gte("starts_at", new Date().toISOString()).order("starts_at", { ascending: true }).limit(100),
     ]);
     setApplications((apps as OrganiserApplicationRow[]) ?? []);
     setEvents((evts as EventRow[]) ?? []);
@@ -93,8 +97,11 @@ export function AdminModerationPage() {
     setCategories((cats as CategoryRow[]) ?? []);
     setPlatformStaff((staffRows as PlatformStaffRow[]) ?? []);
     setRoleAudit((auditRows as PlatformRoleAuditRow[]) ?? []);
+    setThemeEvents((themeRows as ThemeEvent[]) ?? []);
     const settings = await siteSettingsRepository.getPublic().catch(() => null);
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
+    setSelectedThemeEventId(settings?.landingThemeEventId ?? "");
+    setThemeEventUntil(settings?.landingThemeEventUntil ?? null);
   }
 
   async function addCategories() {
@@ -242,6 +249,38 @@ export function AdminModerationPage() {
     }
   }
 
+  async function setEventTheme() {
+    if (!selectedThemeEventId) return;
+    setBusyId("event-theme");
+    setWallpaperError(null);
+    setWallpaperMessage(null);
+    try {
+      const settings = await siteSettingsRepository.setEventTheme(selectedThemeEventId);
+      setThemeEventUntil(settings.landingThemeEventUntil);
+      setWallpaperMessage("Event image is now the landing background for 24 hours.");
+    } catch (themeError) {
+      setWallpaperError((themeError as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function clearEventTheme() {
+    setBusyId("event-theme");
+    setWallpaperError(null);
+    setWallpaperMessage(null);
+    try {
+      await siteSettingsRepository.clearEventTheme();
+      setSelectedThemeEventId("");
+      setThemeEventUntil(null);
+      setWallpaperMessage("Manual event theme cleared. Automatic one-week priority remains enabled.");
+    } catch (themeError) {
+      setWallpaperError((themeError as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   useEffect(() => {
     refresh();
   }, []);
@@ -335,6 +374,27 @@ export function AdminModerationPage() {
           }}
         />
         {wallpaperUrl && <img src={wallpaperUrl} alt="Current landing-page theme" className="mt-4 aspect-[21/7] w-full rounded-lg object-cover" />}
+        <div className="mt-4 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+          <h3 className="font-medium text-ink dark:text-ink-dark">Event theme priority</h3>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+            Select a published event image for a 24-hour landing-page takeover. If no manual theme is active, the nearest event with an image starting within 7 days is automatically used.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="landing-event-theme" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">Event image</label>
+              <Select id="landing-event-theme" value={selectedThemeEventId} onChange={(event) => setSelectedThemeEventId(event.target.value)}>
+                <option value="">Choose an event</option>
+                {themeEvents.map((event) => <option key={event.id} value={event.id}>{event.title} — {formatEventDate(event.starts_at)}</option>)}
+              </Select>
+            </div>
+            <Button size="sm" disabled={!selectedThemeEventId || busyId === "event-theme"} onClick={() => void setEventTheme()}>
+              {busyId === "event-theme" ? "Saving…" : "Use for 24 hours"}
+            </Button>
+            {themeEventUntil && <Button size="sm" variant="outline" disabled={busyId === "event-theme"} onClick={() => void clearEventTheme()}>Clear event theme</Button>}
+          </div>
+          {themeEventUntil && <p className="mt-2 text-xs text-sage">Manual event theme active until {new Date(themeEventUntil).toLocaleString()}.</p>}
+          {themeEvents.length === 0 && <p className="mt-2 text-xs text-ink-faint">No upcoming published events with cover images are available.</p>}
+        </div>
         {wallpaperMessage && <p className="mt-3 text-sm text-sage" role="status">{wallpaperMessage}</p>}
         {wallpaperError && <p className="mt-3 text-sm text-rust" role="alert">{wallpaperError}</p>}
       </Card>

@@ -64,9 +64,11 @@ each one into the Supabase SQL Editor, or with the Supabase CLI.
     listing, granting, updating, and revoking platform roles from the dashboard.
 22. `20260101000022_platform_role_audit_view.sql` — administrator-only role-change
     audit query enriched with actor and target account details.
+23. `20260101000023_event_landing_theme.sql` — 24-hour admin event-theme override
+    fields used by the landing-page automatic priority background.
 
 Run them strictly in order — later files depend on tables, views, and
-functions created earlier. Migrations 0018–0022 do not change payment success,
+functions created earlier. Migrations 0018–0023 do not change payment success,
 ticket issuance, inventory, or order status semantics; they only add the
 post-confirmation notification delivery contract and organizer event-image
 storage policies.
@@ -74,7 +76,7 @@ storage policies.
 If migration 0015 reports `relation "public.events" does not exist`, the
 Supabase project has not received migrations 0001–0014, or the frontend `.env`
 points at a different project. Run migrations 0001–0014 first, in filename
-order, then rerun 0015–0022. The later migrations now fail with an explicit
+order, then rerun 0015–0023. The later migrations now fail with an explicit
 prerequisite message and are safe to rerun after a partial SQL Editor attempt.
 
 ## Further reading

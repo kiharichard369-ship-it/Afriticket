@@ -14,7 +14,9 @@ export function DiscoveryPage() {
   const autoFocusSearch = searchParams.get("focus") === "search";
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
   useEffect(() => {
-    siteSettingsRepository.getPublic().then((settings) => setWallpaperUrl(settings.wallpaperUrl)).catch(() => undefined);
+    siteSettingsRepository.getPublic().then((settings) => {
+      setWallpaperUrl(settings.landingThemeEvent?.cover_image_url ?? settings.automaticThemeEvent?.cover_image_url ?? settings.wallpaperUrl);
+    }).catch(() => undefined);
   }, []);
 
   return (
