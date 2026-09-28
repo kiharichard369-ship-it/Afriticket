@@ -10,6 +10,41 @@ import { Input } from "../ui/Input";
 
 type Step = "select" | "phone" | "processing" | "success" | "failed" | "pending" | "error";
 
+/**
+ * Turns a supabase-js functions.invoke() error into something actionable.
+ * The old handler collapsed every failure into "not deployed yet", which is
+ * only one of several very different causes (not deployed, function crashed,
+ * bad provider credentials, or the browser blocking the request via CORS).
+ */
+async function describeFunctionError(err: unknown): Promise<string> {
+  const e = err as { name?: string; message?: string; context?: Response };
+
+  if (e?.name === "FunctionsHttpError" && e.context) {
+    const status = e.context.status;
+    let detail = "";
+    try {
+      const body = await e.context.clone().json();
+      detail = body?.error ?? body?.message ?? JSON.stringify(body);
+    } catch {
+      try {
+        detail = await e.context.text();
+      } catch {
+        /* no readable body */
+      }
+    }
+    if (status === 404) {
+      return "The payment function (initiate-payment) was not found on your Supabase project. Deploy it with: supabase functions deploy initiate-payment";
+    }
+    return `Payment service returned an error (HTTP ${status})${detail ? `: ${detail}` : "."}`;
+  }
+
+  if (e?.name === "FunctionsFetchError") {
+    return "Couldn't reach the payment function. Either it isn't deployed, or the browser blocked the request (CORS). If it is deployed, check that the ALLOWED_ORIGIN secret matches this site's address exactly (e.g. http://localhost:5173 while testing), or unset it.";
+  }
+
+  return e?.message ?? "Unknown payment error.";
+}
+
 export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDetail; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { user } = useAuth();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -92,9 +127,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
         body: { orderId: (order as { id: string }).id, phoneNumber: phone },
       });
       if (fnError) {
-        throw new Error(
-          "Checkout is set up in the database, but the initiate-payment Edge Function isn't deployed yet — see supabase/functions/README.md."
-        );
+        throw new Error(await describeFunctionError(fnError));
       }
 
       if (initiation.status === "succeeded") {
