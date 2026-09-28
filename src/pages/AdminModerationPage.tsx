@@ -73,6 +73,9 @@ export function AdminModerationPage() {
   const [staffError, setStaffError] = useState<string | null>(null);
   const [staffMessage, setStaffMessage] = useState<string | null>(null);
   const [roleAudit, setRoleAudit] = useState<PlatformRoleAuditRow[]>([]);
+  const [auditFrom, setAuditFrom] = useState("");
+  const [auditTo, setAuditTo] = useState("");
+  const [auditAction, setAuditAction] = useState<"all" | PlatformRoleAuditRow["action"]>("all");
 
   async function refresh() {
     if (!supabase) return;
@@ -162,7 +165,7 @@ export function AdminModerationPage() {
 
   function exportRoleAuditCsv() {
     const header = ["Timestamp", "Action", "Role", "Actor email", "Target name", "Target email", "Target user ID"];
-    const rows = roleAudit.map((entry) => [
+    const rows = filteredRoleAudit.map((entry) => [
       new Date(entry.created_at).toISOString(),
       entry.action === "grant_platform_role" ? "granted or updated" : "removed",
       entry.metadata?.role ?? "",
@@ -186,12 +189,12 @@ export function AdminModerationPage() {
     y += 18;
     doc.setFontSize(9);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Generated ${new Date().toLocaleString()} · ${roleAudit.length} entries`, margin, y);
+    doc.text(`Generated ${new Date().toLocaleString()} · ${filteredRoleAudit.length} entries`, margin, y);
     y += 24;
     doc.setTextColor(30, 30, 30);
     doc.setFontSize(9);
     const lineHeight = 13;
-    roleAudit.forEach((entry, index) => {
+    filteredRoleAudit.forEach((entry, index) => {
       const action = entry.action === "grant_platform_role" ? "Granted/updated" : "Removed";
       const role = entry.metadata?.role ? ` (${entry.metadata.role})` : "";
       const actor = entry.actor_email ?? entry.actor_id ?? "Unknown admin";
@@ -292,6 +295,16 @@ export function AdminModerationPage() {
     if (error) alert(error.message);
     else refresh();
   }
+
+  const auditFromTime = auditFrom ? new Date(`${auditFrom}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
+  const auditToTime = auditTo ? new Date(`${auditTo}T23:59:59.999`).getTime() : Number.POSITIVE_INFINITY;
+  const invalidAuditRange = auditFromTime > auditToTime;
+  const filteredRoleAudit = invalidAuditRange
+    ? []
+    : roleAudit.filter((entry) => {
+        const timestamp = new Date(entry.created_at).getTime();
+        return timestamp >= auditFromTime && timestamp <= auditToTime && (auditAction === "all" || entry.action === auditAction);
+      });
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -413,15 +426,44 @@ export function AdminModerationPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="saffron">Latest {roleAudit.length}</Badge>
-            <Button size="sm" variant="outline" disabled={roleAudit.length === 0} onClick={exportRoleAuditCsv}>Download CSV</Button>
-            <Button size="sm" variant="outline" disabled={roleAudit.length === 0} onClick={exportRoleAuditPdf}>Download PDF</Button>
+            <Badge tone="saffron">Showing {filteredRoleAudit.length} of {roleAudit.length}</Badge>
+            <Button size="sm" variant="outline" disabled={filteredRoleAudit.length === 0} onClick={exportRoleAuditCsv}>Download CSV</Button>
+            <Button size="sm" variant="outline" disabled={filteredRoleAudit.length === 0} onClick={exportRoleAuditPdf}>Download PDF</Button>
           </div>
+        </div>
+        <div className="mt-4 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label htmlFor="audit-from" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">From date</label>
+              <Input id="audit-from" type="date" value={auditFrom} onChange={(event) => setAuditFrom(event.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="audit-to" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">To date</label>
+              <Input id="audit-to" type="date" value={auditTo} onChange={(event) => setAuditTo(event.target.value)} />
+            </div>
+            <div className="min-w-52">
+              <label htmlFor="audit-action" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">Action type</label>
+              <Select id="audit-action" value={auditAction} onChange={(event) => setAuditAction(event.target.value as typeof auditAction)}>
+                <option value="all">All actions</option>
+                <option value="grant_platform_role">Granted or updated</option>
+                <option value="revoke_platform_role">Removed</option>
+              </Select>
+            </div>
+            {(auditFrom || auditTo || auditAction !== "all") && (
+              <Button size="sm" variant="ghost" onClick={() => { setAuditFrom(""); setAuditTo(""); setAuditAction("all"); }}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+          {invalidAuditRange && <p className="mt-2 text-sm text-rust" role="alert">The “From date” must be on or before the “To date”.</p>}
+          <p className="mt-2 text-xs text-ink-faint">Filters apply to the latest 50 loaded audit entries and to both downloads.</p>
         </div>
         <div className="mt-4 space-y-2">
           {roleAudit.length === 0 ? (
             <p className="text-sm text-ink-faint">No role changes recorded yet, or migration 0022 has not been applied.</p>
-          ) : roleAudit.map((entry) => {
+          ) : filteredRoleAudit.length === 0 ? (
+            <p className="text-sm text-ink-faint">No audit entries match the selected filters.</p>
+          ) : filteredRoleAudit.map((entry) => {
             const target = entry.target_full_name || entry.target_email || entry.target_user_id || "Unknown account";
             const role = entry.metadata?.role;
             const verb = entry.action === "grant_platform_role" ? "granted/updated" : "removed";
