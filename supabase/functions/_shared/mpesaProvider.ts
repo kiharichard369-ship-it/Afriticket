@@ -63,7 +63,10 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
         TransactionType: "CustomerBuyGoodsOnline",
         Amount: Math.round(params.amountMinor / 100),
         PartyA: params.phoneNumber,
-        PartyB: "",
+        // CustomerBuyGoodsOnline requires the receiving Buy Goods till in
+        // PartyB. For Afriticket this is the configured shortcode (3432873
+        // in production); an empty PartyB is rejected as "Invalid PartyB".
+        PartyB: this.config.shortcode,
         PhoneNumber: params.phoneNumber,
         CallBackURL: this.config.callbackUrl,
         AccountReference: "Afriticket",

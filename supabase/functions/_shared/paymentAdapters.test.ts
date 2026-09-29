@@ -115,6 +115,7 @@ Deno.test("mpesa adapter: initiate() calls oauth then STK push and returns Check
     // Amount must be converted from minor units (cents) to whole KES.
     assertEquals((received[1].body as { Amount: number }).Amount, 1500);
     assertEquals((received[1].body as { PhoneNumber: string }).PhoneNumber, "254712345678");
+    assertEquals((received[1].body as { PartyB: string }).PartyB, "3432873");
   } finally {
     await server.shutdown();
   }
