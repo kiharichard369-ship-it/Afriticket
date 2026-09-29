@@ -23,6 +23,14 @@ function toBase64(input: string): string {
   return btoa(input);
 }
 
+function normalizeMsisdn(value: string): string {
+  const digits = value.replace(/\D/g, "").replace(/^00/, "");
+  if (digits.startsWith("0") || digits.length < 10 || digits.length > 15) {
+    throw new Error("phoneNumber must be an international MSISDN, for example 254712345678");
+  }
+  return digits;
+}
+
 /** Extracts a named field from Daraja's CallbackMetadata.Item array shape. */
 function metadataValue(items: Array<{ Name: string; Value?: unknown }> | undefined, name: string): unknown {
   return items?.find((i) => i.Name === name)?.Value;
@@ -50,6 +58,7 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
 
   async initiate(params: InitiateParams): Promise<InitiateResult> {
     if (!params.phoneNumber) throw new Error("phoneNumber is required for M-Pesa STK push");
+    const phoneNumber = normalizeMsisdn(params.phoneNumber);
     const token = await this.getAccessToken();
     const { password, timestamp } = this.passwordAndTimestamp();
 
@@ -62,12 +71,12 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
         Timestamp: timestamp,
         TransactionType: "CustomerBuyGoodsOnline",
         Amount: Math.round(params.amountMinor / 100),
-        PartyA: params.phoneNumber,
+        PartyA: phoneNumber,
         // CustomerBuyGoodsOnline requires the receiving Buy Goods till in
         // PartyB. For Afriticket this is the configured shortcode (3432873
         // in production); an empty PartyB is rejected as "Invalid PartyB".
         PartyB: this.config.shortcode,
-        PhoneNumber: params.phoneNumber,
+        PhoneNumber: phoneNumber,
         CallBackURL: this.config.callbackUrl,
         AccountReference: "Afriticket",
         TransactionDesc: "Payment for Afriticket",

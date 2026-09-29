@@ -103,7 +103,7 @@ Deno.test("mpesa adapter: initiate() calls oauth then STK push and returns Check
       orderReference: "TY-ABC123",
       amountMinor: 150000,
       currency: "KES",
-      phoneNumber: "254712345678",
+      phoneNumber: "+254 712 345 678",
     });
 
     assertEquals(result.status, "pending");
@@ -115,6 +115,7 @@ Deno.test("mpesa adapter: initiate() calls oauth then STK push and returns Check
     // Amount must be converted from minor units (cents) to whole KES.
     assertEquals((received[1].body as { Amount: number }).Amount, 1500);
     assertEquals((received[1].body as { PhoneNumber: string }).PhoneNumber, "254712345678");
+    assertEquals((received[1].body as { PartyA: string }).PartyA, "254712345678");
     assertEquals((received[1].body as { PartyB: string }).PartyB, "3432873");
   } finally {
     await server.shutdown();

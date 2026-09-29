@@ -246,8 +246,8 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
 
       {step === "pending" && (
         <div className="space-y-4 py-4 text-center">
-          <p className="text-ink dark:text-ink-dark">An M-Pesa prompt has been sent to +{internationalPhone}. Enter your PIN to complete payment.</p>
-          <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Once confirmed, your tickets will appear under "My tickets".</p>
+          <p className="text-ink dark:text-ink-dark">Your M-Pesa payment request was accepted for +{internationalPhone}.</p>
+          <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Check that phone for the PIN prompt. If it does not arrive within a minute, confirm that the number has an active M-Pesa line and try again. Tickets appear under "My tickets" after Safaricom confirms payment.</p>
           <Button variant="outline" onClick={close}>Close</Button>
         </div>
       )}
