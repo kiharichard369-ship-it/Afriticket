@@ -28,6 +28,14 @@ interface PlatformStaffRow {
   role: PlatformRole;
   created_at: string;
 }
+interface PlatformUserRow {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  account_status: "active" | "suspended" | "deleted";
+  registered_at: string;
+  role: PlatformRole | null;
+}
 interface PlatformRoleAuditRow {
   id: string;
   actor_id: string | null;
@@ -71,6 +79,9 @@ export function AdminModerationPage() {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
   const [platformStaff, setPlatformStaff] = useState<PlatformStaffRow[]>([]);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUserRow[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleDrafts, setUserRoleDrafts] = useState<Record<string, PlatformRole>>({});
   const [staffEmail, setStaffEmail] = useState("");
   const [staffRole, setStaffRole] = useState<PlatformRole>("moderator");
   const [staffError, setStaffError] = useState<string | null>(null);
@@ -82,7 +93,7 @@ export function AdminModerationPage() {
 
   async function refresh() {
     if (!supabase) return;
-    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }, { data: auditRows }, { data: themeRows }] = await Promise.all([
+    const [{ data: apps }, { data: evts }, { data: rfds }, { data: cats }, { data: staffRows }, { data: auditRows }, { data: themeRows }, { data: userRows }] = await Promise.all([
       supabase.from("organiser_applications").select("*").eq("status", "pending").order("created_at"),
       supabase.from("events").select("*, category:categories(*), venue:venues(*)").eq("status", "pending_review").order("created_at"),
       supabase.from("refunds").select("id, order_id, amount_minor, reason, order:orders(reference)").eq("status", "requested").order("created_at"),
@@ -90,6 +101,7 @@ export function AdminModerationPage() {
       supabase.rpc("list_platform_staff"),
       supabase.rpc("list_platform_role_audit", { p_limit: 50 }),
       supabase.from("events_public").select("id, title, cover_image_url, starts_at").not("cover_image_url", "is", null).gte("starts_at", new Date().toISOString()).order("starts_at", { ascending: true }).limit(100),
+      supabase.rpc("list_platform_users", { p_search: userSearch || null }),
     ]);
     setApplications((apps as OrganiserApplicationRow[]) ?? []);
     setEvents((evts as EventRow[]) ?? []);
@@ -98,6 +110,7 @@ export function AdminModerationPage() {
     setPlatformStaff((staffRows as PlatformStaffRow[]) ?? []);
     setRoleAudit((auditRows as PlatformRoleAuditRow[]) ?? []);
     setThemeEvents((themeRows as ThemeEvent[]) ?? []);
+    setPlatformUsers((userRows as PlatformUserRow[]) ?? []);
     const settings = await siteSettingsRepository.getPublic().catch(() => null);
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
     setSelectedThemeEventId(settings?.landingThemeEventId ?? "");
@@ -152,6 +165,22 @@ export function AdminModerationPage() {
     }
     setStaffEmail("");
     setStaffMessage(`${email} now has the ${staffRole} platform role.`);
+  }
+
+  async function assignRoleToUser(account: PlatformUserRow) {
+    if (!supabase) return;
+    const role = userRoleDrafts[account.user_id] ?? account.role ?? "moderator";
+    setBusyId(`user-role-${account.user_id}`);
+    setStaffError(null);
+    setStaffMessage(null);
+    const { error } = await supabase.rpc("grant_platform_role", { p_email: account.email, p_role: role });
+    setBusyId(null);
+    if (error) {
+      setStaffError(error.message);
+      return;
+    }
+    setStaffMessage(`${account.email} now has the ${role} platform role.`);
+    await refresh();
   }
 
   async function revokePlatformRole(staff: PlatformStaffRow) {
@@ -474,6 +503,53 @@ export function AdminModerationPage() {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      <Card className="mt-6 p-5">
+        <div>
+          <h2 className="font-display text-xl text-ink dark:text-ink-dark">Registered accounts</h2>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+            New accounts appear here automatically. Leave an account unchanged, or assign/update its platform role directly from this list.
+          </p>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Input aria-label="Search registered accounts" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by email or name" />
+          <Button variant="outline" onClick={() => void refresh()}>Search</Button>
+        </div>
+        <div className="mt-4 space-y-2">
+          {platformUsers.length === 0 ? (
+            <p className="text-sm text-ink-faint">No accounts found, or migration 0024 has not been applied yet.</p>
+          ) : platformUsers.map((account) => {
+            const draftRole = userRoleDrafts[account.user_id] ?? account.role ?? "moderator";
+            const isDeleted = account.account_status === "deleted";
+            return (
+              <div key={account.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink dark:text-ink-dark">{account.full_name || account.email}</p>
+                  {account.full_name && <p className="truncate text-xs text-ink-soft dark:text-ink-soft-dark">{account.email}</p>}
+                  <p className="text-xs text-ink-faint">Registered {new Date(account.registered_at).toLocaleDateString()} · {account.account_status}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {account.role ? <Badge tone="saffron">{account.role}</Badge> : <Badge tone="neutral">No platform role</Badge>}
+                  <Select
+                    aria-label={`Role for ${account.email}`}
+                    value={draftRole}
+                    disabled={isDeleted}
+                    className="h-9 min-w-36 text-sm"
+                    onChange={(event) => setUserRoleDrafts((current) => ({ ...current, [account.user_id]: event.target.value as PlatformRole }))}
+                  >
+                    <option value="support">Support</option>
+                    <option value="moderator">Moderator</option>
+                    <option value="admin">Administrator</option>
+                  </Select>
+                  <Button size="sm" disabled={isDeleted || busyId === `user-role-${account.user_id}`} onClick={() => void assignRoleToUser(account)}>
+                    {busyId === `user-role-${account.user_id}` ? "Saving…" : account.role ? "Update role" : "Assign role"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Card>
 
