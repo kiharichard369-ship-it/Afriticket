@@ -1,13 +1,25 @@
-// ALLOWED_ORIGIN should be set to your deployed frontend's exact origin in
-// production (supabase secrets set ALLOWED_ORIGIN=https://afriticket.com).
-// Falling back to "*" only when it's unset keeps local development working
-// without forcing every contributor to configure a secret just to run
-// `supabase functions serve`, but shipping to production with it unset
-// means any site can call these functions from a browser — set it.
+// ALLOWED_ORIGIN should be set to the exact frontend origin, for example
+// http://localhost:5173 during local development or https://afriticket.com
+// in production. Never include a path, trailing slash, or angle brackets.
 // (mpesa-webhook is called server-to-server by Safaricom, which doesn't
 // send an Origin header or honor CORS at all, so this only matters for
 // initiate-payment, which browsers call directly.)
-const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "*";
+const configuredOrigin = Deno.env.get("ALLOWED_ORIGIN")?.trim() ?? "";
+
+function isValidOrigin(value: string) {
+  if (!value || value.includes("<") || value.includes(">") || value.includes("your-")) return false;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && !url.pathname.replace(/\/$/, "") && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+// An invalid or unset value falls back to wildcard rather than emitting an
+// invalid Access-Control-Allow-Origin header that browsers reject outright.
+// Production deployments should always set a real exact origin.
+const allowedOrigin = isValidOrigin(configuredOrigin) ? configuredOrigin : "*";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": allowedOrigin,

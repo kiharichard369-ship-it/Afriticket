@@ -89,7 +89,10 @@ not put that header or any provider key in the frontend.
 
 ```bash
 supabase secrets set PAYMENT_PROVIDER=mock   # or: mpesa
-supabase secrets set ALLOWED_ORIGIN=https://your-deployed-frontend.example.com
+# Local Vite development:
+supabase secrets set ALLOWED_ORIGIN=http://localhost:5173
+# Production: use the exact deployed origin, with no path or trailing slash.
+# Example: https://afriticket.com
 
 # Only needed once PAYMENT_PROVIDER=mpesa:
 supabase secrets set MPESA_CONSUMER_KEY=...
@@ -100,6 +103,11 @@ supabase secrets set MPESA_BASE_URL=https://sandbox.safaricom.co.ke
 supabase secrets set MPESA_CALLBACK_URL=https://<project-ref>.supabase.co/functions/v1/mpesa-webhook/<pick-a-long-random-secret>
 supabase secrets set MPESA_WEBHOOK_SECRET=<the-same-random-secret-from-the-URL-above>
 ```
+
+Do not set `ALLOWED_ORIGIN` to a documentation placeholder such as
+`https://<staging-frontend-domain>`. Browsers reject that value during the
+preflight request. After changing the secret, redeploy `initiate-payment`
+before retrying checkout.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the
 platform — don't set those yourself.
