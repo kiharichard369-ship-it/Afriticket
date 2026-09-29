@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
       consumerKey: Deno.env.get("MPESA_CONSUMER_KEY")!,
       consumerSecret: Deno.env.get("MPESA_CONSUMER_SECRET")!,
       shortcode: Deno.env.get("MPESA_SHORTCODE")!,
+      tillNumber: Deno.env.get("MPESA_TILL_NUMBER")!,
       passkey: Deno.env.get("MPESA_PASSKEY")!,
       baseUrl: Deno.env.get("MPESA_BASE_URL") ?? "https://sandbox.safaricom.co.ke",
       callbackUrl: Deno.env.get("MPESA_CALLBACK_URL")!,

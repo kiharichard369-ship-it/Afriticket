@@ -97,7 +97,8 @@ supabase secrets set ALLOWED_ORIGIN=http://localhost:5173
 # Only needed once PAYMENT_PROVIDER=mpesa:
 supabase secrets set MPESA_CONSUMER_KEY=...
 supabase secrets set MPESA_CONSUMER_SECRET=...
-supabase secrets set MPESA_SHORTCODE=3432873          # Afriticket shortcode supplied for this deployment
+supabase secrets set MPESA_SHORTCODE=3432873          # BusinessShortCode used for password generation
+supabase secrets set MPESA_TILL_NUMBER=3495157        # Buy Goods till sent as PartyB
 supabase secrets set MPESA_PASSKEY=...
 supabase secrets set MPESA_BASE_URL=https://sandbox.safaricom.co.ke
 supabase secrets set MPESA_CALLBACK_URL=https://<project-ref>.supabase.co/functions/v1/mpesa-webhook/<pick-a-long-random-secret>
@@ -175,7 +176,7 @@ developer portal for your sandbox (or production) app.
 
 ## Switching from mock to real M-Pesa
 
-1. Get sandbox credentials from developer.safaricom.co.ke and confirm that shortcode `3432873` is enabled for the selected Daraja environment.
+1. Get sandbox credentials from developer.safaricom.co.ke and confirm that BusinessShortCode `3432873` and Buy Goods till `3495157` are enabled for the selected Daraja environment.
 2. Set the `MPESA_*` secrets above and `PAYMENT_PROVIDER=mpesa`.
 3. Redeploy both functions so they pick up the new secrets.
 4. Test with Safaricom's sandbox test MSISDN (their docs specify one that

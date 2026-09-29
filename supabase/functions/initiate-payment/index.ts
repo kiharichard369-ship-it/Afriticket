@@ -3,6 +3,7 @@
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (SUPABASE_URL is auto-injected)
 //   PAYMENT_PROVIDER = "mock" | "mpesa"
 //   For mpesa: MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE,
+//              MPESA_TILL_NUMBER,
 //              MPESA_PASSKEY, MPESA_BASE_URL, MPESA_CALLBACK_URL, MPESA_WEBHOOK_SECRET
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
@@ -16,11 +17,12 @@ import type { PaymentAdapter } from "../_shared/paymentAdapter.ts";
 function loadAdapter(): PaymentAdapter {
   const provider = Deno.env.get("PAYMENT_PROVIDER") ?? "mock";
   if (provider === "mpesa") {
-    return new MpesaPaymentAdapter({
-      consumerKey: Deno.env.get("MPESA_CONSUMER_KEY")!,
-      consumerSecret: Deno.env.get("MPESA_CONSUMER_SECRET")!,
-      shortcode: Deno.env.get("MPESA_SHORTCODE")!,
-      passkey: Deno.env.get("MPESA_PASSKEY")!,
+      return new MpesaPaymentAdapter({
+        consumerKey: Deno.env.get("MPESA_CONSUMER_KEY")!,
+        consumerSecret: Deno.env.get("MPESA_CONSUMER_SECRET")!,
+        shortcode: Deno.env.get("MPESA_SHORTCODE")!,
+        tillNumber: Deno.env.get("MPESA_TILL_NUMBER")!,
+        passkey: Deno.env.get("MPESA_PASSKEY")!,
       baseUrl: Deno.env.get("MPESA_BASE_URL") ?? "https://sandbox.safaricom.co.ke",
       callbackUrl: Deno.env.get("MPESA_CALLBACK_URL")!,
       webhookSecret: Deno.env.get("MPESA_WEBHOOK_SECRET")!,

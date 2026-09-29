@@ -4,6 +4,8 @@ export interface MpesaConfig {
   consumerKey: string;
   consumerSecret: string;
   shortcode: string;
+  /** Buy Goods till that receives the customer payment (PartyB). */
+  tillNumber: string;
   passkey: string;
   /** e.g. https://sandbox.safaricom.co.ke — injectable so tests point at a fake local server instead. */
   baseUrl: string;
@@ -73,9 +75,8 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
         Amount: Math.round(params.amountMinor / 100),
         PartyA: phoneNumber,
         // CustomerBuyGoodsOnline requires the receiving Buy Goods till in
-        // PartyB. For Afriticket this is the configured shortcode (3432873
-        // in production); an empty PartyB is rejected as "Invalid PartyB".
-        PartyB: this.config.shortcode,
+        // PartyB. This is distinct from BusinessShortCode.
+        PartyB: this.config.tillNumber,
         PhoneNumber: phoneNumber,
         CallBackURL: this.config.callbackUrl,
         AccountReference: "Afriticket",

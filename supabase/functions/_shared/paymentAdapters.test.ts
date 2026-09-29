@@ -86,7 +86,8 @@ function testConfig(baseUrl: string) {
   return {
     consumerKey: "test-key",
     consumerSecret: "test-secret",
-    shortcode: "174379",
+    shortcode: "3432873",
+    tillNumber: "3495157",
     passkey: "test-passkey",
     baseUrl,
     callbackUrl: "https://example.supabase.co/functions/v1/mpesa-webhook/whsec_test123",
@@ -116,7 +117,7 @@ Deno.test("mpesa adapter: initiate() calls oauth then STK push and returns Check
     assertEquals((received[1].body as { Amount: number }).Amount, 1500);
     assertEquals((received[1].body as { PhoneNumber: string }).PhoneNumber, "254712345678");
     assertEquals((received[1].body as { PartyA: string }).PartyA, "254712345678");
-    assertEquals((received[1].body as { PartyB: string }).PartyB, "3432873");
+    assertEquals((received[1].body as { PartyB: string }).PartyB, "3495157");
   } finally {
     await server.shutdown();
   }
