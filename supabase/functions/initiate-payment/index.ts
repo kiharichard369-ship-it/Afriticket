@@ -1,7 +1,7 @@
 // Deployed with: supabase functions deploy initiate-payment
 // Required secrets (supabase secrets set ...):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (SUPABASE_URL is auto-injected)
-//   PAYMENT_PROVIDER = "mpesa" (mock exists only in injected tests)
+//   PAYMENT_PROVIDER = "mpesa"
 //   For mpesa: MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE,
 //              MPESA_TILL_NUMBER,
 //              MPESA_PASSKEY, MPESA_BASE_URL, MPESA_CALLBACK_URL, MPESA_WEBHOOK_SECRET
@@ -24,7 +24,7 @@ function requiredEnv(name: string): string {
 function loadAdapter(): PaymentAdapter {
   const provider = Deno.env.get("PAYMENT_PROVIDER")?.trim();
   if (provider !== "mpesa") {
-    throw new Error("PAYMENT_PROVIDER must be explicitly set to mpesa; mock is test-only");
+    throw new Error("PAYMENT_PROVIDER must be explicitly set to mpesa");
   }
   return new MpesaPaymentAdapter({
     consumerKey: requiredEnv("MPESA_CONSUMER_KEY"),

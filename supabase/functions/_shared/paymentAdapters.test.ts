@@ -1,4 +1,3 @@
-import { MockPaymentAdapter } from "./mockPaymentProvider.ts";
 import { MpesaPaymentAdapter } from "./mpesaProvider.ts";
 
 function assertEquals<T>(actual: T, expected: T) {
@@ -16,33 +15,6 @@ async function assertRejects(fn: () => Promise<unknown>) {
   }
   if (!threw) throw new Error("expected function to reject/throw");
 }
-
-// ── Mock adapter ────────────────────────────────────────────────────────
-
-Deno.test("mock adapter: succeeds for a normal phone number", async () => {
-  const adapter = new MockPaymentAdapter();
-  const result = await adapter.initiate({
-    orderId: "order-1",
-    orderReference: "TY-ABC123",
-    amountMinor: 50000,
-    currency: "KES",
-    phoneNumber: "254712345678",
-  });
-  assertEquals(result.status, "succeeded");
-  assertEquals(result.resolvedImmediately, true);
-});
-
-Deno.test("mock adapter: fails deterministically for a phone number ending in 00", async () => {
-  const adapter = new MockPaymentAdapter();
-  const result = await adapter.initiate({
-    orderId: "order-2",
-    orderReference: "TY-DEF456",
-    amountMinor: 50000,
-    currency: "KES",
-    phoneNumber: "254712345600",
-  });
-  assertEquals(result.status, "failed");
-});
 
 // ── M-Pesa adapter, against a fake local Daraja server ───────────────────
 

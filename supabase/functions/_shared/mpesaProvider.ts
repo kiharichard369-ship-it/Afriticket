@@ -7,7 +7,7 @@ export interface MpesaConfig {
   /** Buy Goods till that receives the customer payment (PartyB). */
   tillNumber: string;
   passkey: string;
-  /** e.g. https://sandbox.safaricom.co.ke — injectable so tests point at a fake local server instead. */
+  /** Production Daraja base URL; tests may inject a fake local server. */
   baseUrl: string;
   /** Full callback URL Safaricom will POST to, including the shared-secret path segment. */
   callbackUrl: string;

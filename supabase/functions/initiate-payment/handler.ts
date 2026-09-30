@@ -52,17 +52,15 @@ export async function handleInitiatePayment(req: Request, deps: InitiatePaymentD
   const payment = await deps.db.recordPaymentInitiation(order.id, deps.adapter.name, initiateResult.providerReference, order.total_minor);
   log.info("payment_recorded", { orderId, paymentId: payment.id, providerReference: initiateResult.providerReference });
 
-  // The mock adapter has no webhook — it already knows the outcome, so
-  // resolve the order right away instead of leaving it "awaiting_payment"
-  // forever. A real async provider (M-Pesa) returns resolvedImmediately:
-  // false here and its webhook finishes the job later.
+  // Production M-Pesa is asynchronous: its webhook finishes the payment
+  // after Daraja confirms or rejects the STK request.
   if (initiateResult.resolvedImmediately) {
     if (initiateResult.status === "succeeded") {
       const { ticketsIssued } = await deps.db.confirmPayment(payment.id);
       log.info("payment_succeeded_sync", { orderId, paymentId: payment.id, ticketsIssued });
       return jsonResponse({ status: "succeeded", orderId: order.id, ticketsIssued });
     } else {
-      await deps.db.failPayment(payment.id, "mock provider simulated failure");
+      await deps.db.failPayment(payment.id, "payment provider reported failure");
       log.info("payment_failed_sync", { orderId, paymentId: payment.id });
       return jsonResponse({ status: "failed", orderId: order.id }, 402);
     }

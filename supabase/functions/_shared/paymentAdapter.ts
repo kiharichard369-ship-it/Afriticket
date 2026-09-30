@@ -18,7 +18,7 @@ export interface InitiateResult {
   /** The provider's own reference for this payment attempt — what webhooks/queries key off. */
   providerReference: string;
   status: PaymentOutcomeStatus;
-  /** Present when a provider resolves synchronously (e.g. the mock adapter) rather than via webhook. */
+  /** M-Pesa returns false because the final outcome arrives through the webhook. */
   resolvedImmediately: boolean;
   raw: unknown;
 }

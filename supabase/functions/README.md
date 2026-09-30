@@ -7,14 +7,9 @@ happens once via the Supabase CLI, from your machine, against your project.
 
 - `_shared/paymentAdapter.ts` — the interface every provider implements:
   `initiate`, `query`, `verifyCallback`, `refund`.
-- `_shared/mockPaymentProvider.ts` — deterministic mock used only by injected
-  tests: a phone number
-  ending in "00" fails, everything else succeeds, resolved synchronously
-  (no webhook). Use this for local dev and demos before you have real
-  M-Pesa sandbox credentials.
 - `_shared/mpesaProvider.ts` — real Safaricom Daraja STK Push client
   (OAuth, STK push, status query, callback parsing). The deployed entrypoints
-  require an explicit `MPESA_BASE_URL`; they no longer default to sandbox.
+  require an explicit production `MPESA_BASE_URL`.
 - `_shared/dbClient.ts` — the DB operations both functions need, as an
   interface. The real implementation wraps `@supabase/supabase-js` with
   the **service role key** — these calls hit `record_payment_initiation`,
@@ -22,9 +17,8 @@ happens once via the Supabase CLI, from your machine, against your project.
   0010 deliberately revokes from `anon`/`authenticated`. Only this
   service-role path can call them.
 - `initiate-payment/` — buyer clicks "Pay": looks up the order, calls the
-  configured provider's `initiate()`, records the payment, and — for a
-  provider that resolves synchronously (the mock) — confirms or fails the
-  order immediately instead of waiting for a webhook that will never come.
+  production M-Pesa adapter, records the payment, and waits for the webhook
+  before completing the order.
 - `mpesa-webhook/` — the public URL Safaricom calls back. Verifies the
   shared-secret path segment, deduplicates by `(provider, providerEventId)`
   against `payment_webhook_events`, then confirms or fails the matching
@@ -50,7 +44,7 @@ passing), including:
 
 - The **M-Pesa adapter's actual HTTP flow** — `initiate()`, `query()`, and
   `verifyCallback()` — against a fake local Daraja server started with
-  `Deno.serve` in the test file itself. This isn't mocked-fetch guesswork;
+  `Deno.serve` in the test file itself. This isn't fetch guesswork;
   the adapter code makes real HTTP requests that a fake server receives,
   parses, and responds to exactly like Daraja would.
 - Both Edge Function **handlers** (`handler.ts`, separate from the
@@ -62,8 +56,8 @@ passing), including:
   processed, and an already-paid order can't be paid for again.
 
 What this does **not** cover: an actual deployed function talking to a
-real Supabase project, or a real Safaricom sandbox call. That needs your
-credentials and is worth doing once before going live — see below. The
+real Supabase project or a live Safaricom account. That needs your production
+credentials — see below. The
 notification handler tests use injected fake DB/provider adapters, so they do
 not establish that a provider is configured or that external delivery is live.
 
@@ -115,8 +109,7 @@ platform — don't set those yourself.
 
 The deployed payment entrypoints intentionally fail closed: `PAYMENT_PROVIDER`
 must be explicitly `mpesa`, every `MPESA_*` secret above must be present, and
-the base URL must be selected deliberately. Mock and sandbox values belong only
-in local/test fixtures, not in production secrets.
+the base URL must be `https://api.safaricom.co.ke`.
 
 ### Notification worker configuration
 
@@ -177,18 +170,15 @@ minute using Supabase pg_cron or the platform's scheduled SQL/Edge Function
 facility. The frontend's just-in-time expiry is not a substitute under load.
 
 Register `MPESA_CALLBACK_URL`'s value as your CallBackURL in the Daraja
-developer portal for your sandbox (or production) app.
+production developer portal application.
 
-## Switching from mock to real M-Pesa
+## Production M-Pesa activation
 
-1. Get sandbox credentials from developer.safaricom.co.ke and confirm that BusinessShortCode `3432873` and Buy Goods till `3495157` are enabled for the selected Daraja environment.
+1. Obtain production credentials and confirm that BusinessShortCode `3432873` and Buy Goods till `3495157` are enabled for the production Daraja application.
 2. Set the `MPESA_*` secrets above and `PAYMENT_PROVIDER=mpesa`.
 3. Redeploy both functions so they pick up the new secrets.
-4. Test with Safaricom's sandbox test MSISDN (their docs specify one that
-   always succeeds in sandbox) before touching production.
-5. Money movement is exactly why this is a provider swap, not a code
-   change: the frontend, the DB functions, and `mpesa-webhook` don't know
-   or care which provider is configured.
+4. Test with an active production M-Pesa number and confirm the callback
+   changes the payment and issues tickets.
 
 ## What Phase 3 deliberately left out and what 0017 adds
 
