@@ -1,34 +1,41 @@
 // Deployed with: supabase functions deploy initiate-payment
 // Required secrets (supabase secrets set ...):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (SUPABASE_URL is auto-injected)
-//   PAYMENT_PROVIDER = "mock" | "mpesa"
+//   PAYMENT_PROVIDER = "mpesa" (mock exists only in injected tests)
 //   For mpesa: MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE,
 //              MPESA_TILL_NUMBER,
 //              MPESA_PASSKEY, MPESA_BASE_URL, MPESA_CALLBACK_URL, MPESA_WEBHOOK_SECRET
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, handleOptions } from "../_shared/cors.ts";
 import { createSupabaseDbClient } from "../_shared/dbClient.ts";
-import { MockPaymentAdapter } from "../_shared/mockPaymentProvider.ts";
 import { MpesaPaymentAdapter } from "../_shared/mpesaProvider.ts";
 import { createLogger } from "../_shared/logger.ts";
 import { handleInitiatePayment } from "./handler.ts";
 import type { PaymentAdapter } from "../_shared/paymentAdapter.ts";
 
-function loadAdapter(): PaymentAdapter {
-  const provider = Deno.env.get("PAYMENT_PROVIDER") ?? "mock";
-  if (provider === "mpesa") {
-      return new MpesaPaymentAdapter({
-        consumerKey: Deno.env.get("MPESA_CONSUMER_KEY")!,
-        consumerSecret: Deno.env.get("MPESA_CONSUMER_SECRET")!,
-        shortcode: Deno.env.get("MPESA_SHORTCODE")!,
-        tillNumber: Deno.env.get("MPESA_TILL_NUMBER")!,
-        passkey: Deno.env.get("MPESA_PASSKEY")!,
-      baseUrl: Deno.env.get("MPESA_BASE_URL") ?? "https://sandbox.safaricom.co.ke",
-      callbackUrl: Deno.env.get("MPESA_CALLBACK_URL")!,
-      webhookSecret: Deno.env.get("MPESA_WEBHOOK_SECRET")!,
-    });
+function requiredEnv(name: string): string {
+  const value = Deno.env.get(name)?.trim();
+  if (!value || value.startsWith("replace-with-") || value.includes("<")) {
+    throw new Error(`missing production payment secret: ${name}`);
   }
-  return new MockPaymentAdapter();
+  return value;
+}
+
+function loadAdapter(): PaymentAdapter {
+  const provider = Deno.env.get("PAYMENT_PROVIDER")?.trim();
+  if (provider !== "mpesa") {
+    throw new Error("PAYMENT_PROVIDER must be explicitly set to mpesa; mock is test-only");
+  }
+  return new MpesaPaymentAdapter({
+    consumerKey: requiredEnv("MPESA_CONSUMER_KEY"),
+    consumerSecret: requiredEnv("MPESA_CONSUMER_SECRET"),
+    shortcode: requiredEnv("MPESA_SHORTCODE"),
+    tillNumber: requiredEnv("MPESA_TILL_NUMBER"),
+    passkey: requiredEnv("MPESA_PASSKEY"),
+    baseUrl: requiredEnv("MPESA_BASE_URL"),
+    callbackUrl: requiredEnv("MPESA_CALLBACK_URL"),
+    webhookSecret: requiredEnv("MPESA_WEBHOOK_SECRET"),
+  });
 }
 
 Deno.serve(async (req) => {

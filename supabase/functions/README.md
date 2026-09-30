@@ -7,14 +7,14 @@ happens once via the Supabase CLI, from your machine, against your project.
 
 - `_shared/paymentAdapter.ts` — the interface every provider implements:
   `initiate`, `query`, `verifyCallback`, `refund`.
-- `_shared/mockPaymentProvider.ts` — deterministic mock: a phone number
+- `_shared/mockPaymentProvider.ts` — deterministic mock used only by injected
+  tests: a phone number
   ending in "00" fails, everything else succeeds, resolved synchronously
   (no webhook). Use this for local dev and demos before you have real
   M-Pesa sandbox credentials.
 - `_shared/mpesaProvider.ts` — real Safaricom Daraja STK Push client
-  (OAuth, STK push, status query, callback parsing). Sandbox by default
-  (`baseUrl` defaults to `https://sandbox.safaricom.co.ke`); point it at
-  the production host once you're ready to go live.
+  (OAuth, STK push, status query, callback parsing). The deployed entrypoints
+  require an explicit `MPESA_BASE_URL`; they no longer default to sandbox.
 - `_shared/dbClient.ts` — the DB operations both functions need, as an
   interface. The real implementation wraps `@supabase/supabase-js` with
   the **service role key** — these calls hit `record_payment_initiation`,
@@ -88,7 +88,7 @@ not put that header or any provider key in the frontend.
 ## Secrets
 
 ```bash
-supabase secrets set PAYMENT_PROVIDER=mock   # or: mpesa
+supabase secrets set PAYMENT_PROVIDER=mpesa
 # Local Vite development:
 supabase secrets set ALLOWED_ORIGIN=http://localhost:5173
 # Production: use the exact deployed origin, with no path or trailing slash.
@@ -100,7 +100,7 @@ supabase secrets set MPESA_CONSUMER_SECRET=...
 supabase secrets set MPESA_SHORTCODE=3432873          # BusinessShortCode used for password generation
 supabase secrets set MPESA_TILL_NUMBER=3495157        # Buy Goods till sent as PartyB
 supabase secrets set MPESA_PASSKEY=...
-supabase secrets set MPESA_BASE_URL=https://sandbox.safaricom.co.ke
+supabase secrets set MPESA_BASE_URL=https://api.safaricom.co.ke
 supabase secrets set MPESA_CALLBACK_URL=https://<project-ref>.supabase.co/functions/v1/mpesa-webhook/<pick-a-long-random-secret>
 supabase secrets set MPESA_WEBHOOK_SECRET=<the-same-random-secret-from-the-URL-above>
 ```
@@ -112,6 +112,11 @@ before retrying checkout.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the
 platform — don't set those yourself.
+
+The deployed payment entrypoints intentionally fail closed: `PAYMENT_PROVIDER`
+must be explicitly `mpesa`, every `MPESA_*` secret above must be present, and
+the base URL must be selected deliberately. Mock and sandbox values belong only
+in local/test fixtures, not in production secrets.
 
 ### Notification worker configuration
 

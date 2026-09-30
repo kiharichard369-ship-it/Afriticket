@@ -13,6 +13,14 @@ import { MpesaPaymentAdapter } from "../_shared/mpesaProvider.ts";
 import { createLogger } from "../_shared/logger.ts";
 import { handleMpesaWebhook } from "./handler.ts";
 
+function requiredEnv(name: string): string {
+  const value = Deno.env.get(name)?.trim();
+  if (!value || value.startsWith("replace-with-") || value.includes("<")) {
+    throw new Error(`missing production payment secret: ${name}`);
+  }
+  return value;
+}
+
 Deno.serve(async (req) => {
   const optionsResponse = handleOptions(req);
   if (optionsResponse) return optionsResponse;
@@ -23,14 +31,14 @@ Deno.serve(async (req) => {
   try {
     const db = createSupabaseDbClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, createClient);
     const adapter = new MpesaPaymentAdapter({
-      consumerKey: Deno.env.get("MPESA_CONSUMER_KEY")!,
-      consumerSecret: Deno.env.get("MPESA_CONSUMER_SECRET")!,
-      shortcode: Deno.env.get("MPESA_SHORTCODE")!,
-      tillNumber: Deno.env.get("MPESA_TILL_NUMBER")!,
-      passkey: Deno.env.get("MPESA_PASSKEY")!,
-      baseUrl: Deno.env.get("MPESA_BASE_URL") ?? "https://sandbox.safaricom.co.ke",
-      callbackUrl: Deno.env.get("MPESA_CALLBACK_URL")!,
-      webhookSecret: Deno.env.get("MPESA_WEBHOOK_SECRET")!,
+      consumerKey: requiredEnv("MPESA_CONSUMER_KEY"),
+      consumerSecret: requiredEnv("MPESA_CONSUMER_SECRET"),
+      shortcode: requiredEnv("MPESA_SHORTCODE"),
+      tillNumber: requiredEnv("MPESA_TILL_NUMBER"),
+      passkey: requiredEnv("MPESA_PASSKEY"),
+      baseUrl: requiredEnv("MPESA_BASE_URL"),
+      callbackUrl: requiredEnv("MPESA_CALLBACK_URL"),
+      webhookSecret: requiredEnv("MPESA_WEBHOOK_SECRET"),
     });
     return await handleMpesaWebhook(req, { db, adapter, logger });
   } catch (err) {
