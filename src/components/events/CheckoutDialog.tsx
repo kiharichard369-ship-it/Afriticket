@@ -61,6 +61,10 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       close();
       return;
     }
+    if (!user) {
+      setError("Please log in or create an account before buying tickets so they appear under My tickets.");
+      return;
+    }
     setError(null);
     setStep("phone");
   }
@@ -189,6 +193,12 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
           </div>
 
           {error && <p role="alert" className="text-sm text-rust">{error}</p>}
+
+          {!user && isSupabaseConfigured && (
+            <p className="text-center text-xs text-ink-soft dark:text-ink-soft-dark">
+              <Link to="/login" state={{ from: window.location.pathname }}>Log in</Link> or create an account before checkout.
+            </p>
+          )}
 
           <Button className="w-full" disabled={totalQty === 0} onClick={goToPhoneStep}>
             {isSupabaseConfigured ? "Continue" : "Continue to checkout"}

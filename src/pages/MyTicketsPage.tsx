@@ -98,11 +98,20 @@ export function MyTicketsPage() {
 
   useEffect(() => {
     if (!supabase || !user) return;
-    supabase
-      .from("tickets")
-      .select("id, public_code, backup_code, status, order_id, event:events(title, starts_at, slug, venue:venues(name, town))")
-      .order("issued_at", { ascending: false })
-      .then(({ data }) => setTickets((data as unknown as TicketWithEvent[]) ?? []));
+    const db = supabase as NonNullable<typeof supabase>;
+    let cancelled = false;
+    async function loadTickets() {
+      // Recover a paid guest checkout made with this verified account email.
+      // The RPC only claims unowned, paid orders with an exact normalized email match.
+      await db.rpc("claim_paid_guest_orders");
+      const { data } = await db
+        .from("tickets")
+        .select("id, public_code, backup_code, status, order_id, event:events(title, starts_at, slug, venue:venues(name, town))")
+        .order("issued_at", { ascending: false });
+      if (!cancelled) setTickets((data as unknown as TicketWithEvent[]) ?? []);
+    }
+    loadTickets();
+    return () => { cancelled = true; };
   }, [user]);
 
   if (!user) {
