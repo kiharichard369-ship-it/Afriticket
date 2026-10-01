@@ -28,7 +28,8 @@ happens once via the Supabase CLI, from your machine, against your project.
   payload, calls a configured email/SMS/WhatsApp adapter, and conditionally
   marks `sent`, `delivered`, or `failed` only while it still owns the lease.
   The queue key (`notifications.id`) is passed to providers as the request
-  idempotency key. This is safe scaffolding, not a claim that delivery is live.
+  idempotency key. Configure the provider and scheduler below before treating
+  email delivery as live.
 
 ## Tested, and how
 
@@ -112,6 +113,22 @@ must be explicitly `mpesa`, every `MPESA_*` secret above must be present, and
 the base URL must be `https://api.safaricom.co.ke`.
 
 ### Notification worker configuration
+
+#### Ticket emails for guest and signed-in buyers
+
+After a successful M-Pesa callback, `confirm_payment_and_issue_tickets` creates
+the ticket rows first and queues a `ticket_confirmation` email. The recipient
+is `orders.buyer_email`, which is the email entered during checkout; it does
+not depend on `orders.buyer_id` or on the buyer having an Afriticket account.
+The email contains each ticket's entry code and backup code, so a buyer can
+use the ticket without logging in. Signed-in buyers can also view the same
+tickets under **My tickets**.
+
+Email delivery is asynchronous. A queued notification will not leave Supabase
+until `deliver-notifications` is deployed, Resend is configured, and a private
+scheduler invokes the worker. The worker must be invoked every minute (or at a
+similar cadence) with the Supabase function authorization and the
+`x-worker-secret` header. Do not call it from the browser.
 
 Migration `20260101000018_notification_delivery_worker.sql` adds lease and
 attempt metadata and service-role-only RPCs:

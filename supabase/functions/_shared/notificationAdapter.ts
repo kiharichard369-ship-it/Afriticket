@@ -52,14 +52,15 @@ export function renderNotification(payload: NotificationPayload): NotificationMe
     : "the scheduled event time";
   const venue = [payload.venueName, payload.venueTown].filter(Boolean).join(", ") || "the event venue";
   const codes = payload.ticketCodes.length > 0
-    ? payload.ticketCodes.map((ticket, index) => `${index + 1}. ${ticket.publicCode} (backup: ${ticket.backupCode})`).join("\n")
-    : "Your ticket details are available in your Afriticket account.";
+    ? payload.ticketCodes.map((ticket, index) => `${index + 1}. Entry code: ${ticket.publicCode}\n   Backup code: ${ticket.backupCode}`).join("\n")
+    : "Your ticket details are available in your Afriticket account, if you have one.";
 
   const text = [
     `Your Afriticket tickets for ${eventTitle}`,
     `Order: ${orderReference}`,
     `When: ${start}`,
     `Where: ${venue}`,
+    "Show the entry code or backup code at the venue. No Afriticket login is required for entry.",
     "",
     codes,
   ].join("\n");
@@ -70,7 +71,7 @@ export function renderNotification(payload: NotificationPayload): NotificationMe
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-  const html = `<h1>Your Afriticket tickets</h1><p><strong>${escapeHtml(eventTitle)}</strong></p><p>Order: ${escapeHtml(orderReference)}<br>When: ${escapeHtml(start)}<br>Where: ${escapeHtml(venue)}</p><pre>${escapeHtml(codes)}</pre>`;
+  const html = `<h1>Your Afriticket tickets</h1><p><strong>${escapeHtml(eventTitle)}</strong></p><p>Order: ${escapeHtml(orderReference)}<br>When: ${escapeHtml(start)}<br>Where: ${escapeHtml(venue)}</p><p>Show the entry code or backup code at the venue. No Afriticket login is required for entry.</p><pre>${escapeHtml(codes)}</pre>`;
 
   return { subject: `Your Afriticket tickets — ${eventTitle}`, text, html };
 }

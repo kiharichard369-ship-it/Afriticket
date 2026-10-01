@@ -265,7 +265,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       {step === "success" && (
         <div className="space-y-4 py-4 text-center">
           <p className="text-ink dark:text-ink-dark">
-            {ticketsIssued} ticket{ticketsIssued === 1 ? "" : "s"} issued and sent to {email}.
+            {ticketsIssued} ticket{ticketsIssued === 1 ? "" : "s"} issued. A confirmation email with your entry code{ticketsIssued === 1 ? "" : "s"} will be sent to {email}.
           </p>
           <Link to="/my-tickets">
             <Button className="w-full">View my tickets</Button>
