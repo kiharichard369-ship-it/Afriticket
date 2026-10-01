@@ -111,7 +111,11 @@ export function MyTicketsPage() {
       if (!cancelled) setTickets((data as unknown as TicketWithEvent[]) ?? []);
     }
     loadTickets();
-    return () => { cancelled = true; };
+    const refreshTimer = window.setInterval(loadTickets, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
   }, [user]);
 
   if (!user) {

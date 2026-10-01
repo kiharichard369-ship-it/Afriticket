@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
@@ -34,6 +34,8 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   const [email, setEmail] = useState(user?.email ?? "");
   const [error, setError] = useState<string | null>(null);
   const [ticketsIssued, setTicketsIssued] = useState(0);
+  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+  const [paymentPollMessage, setPaymentPollMessage] = useState("Waiting for Safaricom to confirm your payment…");
 
   const totalMinor = event.ticketTypes.reduce((sum, t) => sum + t.priceMinor * (quantities[t.id] ?? 0), 0);
   const totalQty = Object.values(quantities).reduce((a, b) => a + b, 0);
@@ -47,6 +49,8 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
     setError(null);
     setQuantities({});
     setSessionKey(crypto.randomUUID());
+    setPaymentOrderId(null);
+    setPaymentPollMessage("Waiting for Safaricom to confirm your payment…");
   }
 
   function close() {
@@ -127,6 +131,8 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
         setTicketsIssued(initiation.ticketsIssued ?? totalQty);
         setStep("success");
       } else if (initiation.status === "pending") {
+        setPaymentOrderId((order as { id: string }).id);
+        setPaymentPollMessage("Waiting for Safaricom to confirm your payment…");
         setStep("pending");
       } else {
         setError("Payment didn't go through. You can try again.");
@@ -137,6 +143,52 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       setStep("error");
     }
   }
+
+  useEffect(() => {
+    if (step !== "pending" || !paymentOrderId || !supabase) return;
+    const db = supabase;
+    let cancelled = false;
+    let attempts = 0;
+
+    async function checkPayment() {
+      attempts += 1;
+      const [{ data: order }, { data: payment }] = await Promise.all([
+        db.from("orders").select("status").eq("id", paymentOrderId).maybeSingle(),
+        db.from("payments").select("status").eq("order_id", paymentOrderId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (cancelled) return;
+
+      if (order?.status === "paid" || payment?.status === "succeeded") {
+        const { data: issuedTickets } = await db.from("tickets").select("id").eq("order_id", paymentOrderId);
+        if (cancelled) return;
+        if (issuedTickets && issuedTickets.length > 0) {
+          setTicketsIssued(issuedTickets.length);
+          setPaymentPollMessage("Payment confirmed and tickets issued.");
+          setStep("success");
+          return;
+        }
+      }
+
+      if (order?.status === "failed" || payment?.status === "failed") {
+        setError("Safaricom reported that the payment was not completed. You can try again.");
+        setStep("failed");
+        return;
+      }
+
+      if (attempts >= 40) {
+        setPaymentPollMessage("Payment is still being confirmed. You can close this window; your tickets will appear after confirmation.");
+      } else {
+        setPaymentPollMessage("Payment request received. Keep this window open while Safaricom confirms it…");
+      }
+    }
+
+    checkPayment();
+    const timer = window.setInterval(checkPayment, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [step, paymentOrderId]);
 
   const selectedTypeNames = selectedTypes.map((ticketType) => ticketType.name).join(", ");
 
@@ -257,7 +309,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       {step === "pending" && (
         <div className="space-y-4 py-4 text-center">
           <p className="text-ink dark:text-ink-dark">Your M-Pesa payment request was accepted for +{internationalPhone}.</p>
-          <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Check that phone for the PIN prompt. If it does not arrive within a minute, confirm that the number has an active M-Pesa line and try again. Tickets appear under "My tickets" after Safaricom confirms payment.</p>
+          <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Check that phone for the PIN prompt, enter your M-Pesa PIN, and keep this window open. {paymentPollMessage}</p>
           <Button variant="outline" onClick={close}>Close</Button>
         </div>
       )}
