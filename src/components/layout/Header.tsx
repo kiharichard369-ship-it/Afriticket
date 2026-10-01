@@ -24,7 +24,7 @@ export function Header() {
     <header className="sticky top-0 z-30 border-b border-border-warm bg-paper/95 backdrop-blur dark:border-border-dark dark:bg-paper-dark/95">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
         <Link to="/" className="flex items-center gap-2 text-ink dark:text-ink-dark">
-          <img src="/afriticket-logo.jpeg" alt="Afriticket" className="h-9 w-auto max-w-[180px] rounded-md bg-black object-contain" />
+          <img src="/afriticket-logo-transparent.png" alt="Afriticket" className="h-9 w-auto max-w-[180px] object-contain" />
           <span className="sr-only">Afriticket</span>
         </Link>
 

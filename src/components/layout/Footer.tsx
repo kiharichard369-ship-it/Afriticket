@@ -7,7 +7,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 sm:grid-cols-2 md:grid-cols-4">
         <div>
           <Link to="/" className="inline-flex items-center text-ink dark:text-ink-dark">
-            <img src="/afriticket-logo.jpeg" alt="Afriticket" className="h-10 w-auto max-w-[190px] rounded-md bg-black object-contain" />
+            <img src="/afriticket-logo-transparent.png" alt="Afriticket" className="h-10 w-auto max-w-[190px] object-contain" />
           </Link>
           <p className="mt-3 max-w-xs text-sm text-ink-soft dark:text-ink-soft-dark">
             Find and book events across Kenya — concerts, markets, sport, theatre, and community
