@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { PageBackdrop } from "../components/layout/PageBackdrop";
 
 export function SignUpPage() {
   const { signUp, configured } = useAuth();
@@ -27,28 +28,34 @@ export function SignUpPage() {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-md px-6 py-16 text-center">
-        <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">Check your email</h1>
-        <p className="mt-2 text-ink-soft dark:text-ink-soft-dark">
-          We've sent a confirmation link. Once verified, you can log in.
-        </p>
-        <Button className="mt-6" onClick={() => navigate("/login")}>Go to log in</Button>
-      </div>
+      <PageBackdrop image="/backgrounds/afriticket-hero.jpg">
+        <div className="mx-auto max-w-md px-6 py-16 text-center">
+          <div className="rounded-3xl border border-border-warm/70 bg-paper/95 p-7 shadow-xl shadow-ink/10 backdrop-blur-sm dark:border-border-dark/70 dark:bg-paper-dark/95">
+            <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">Check your email</h1>
+            <p className="mt-2 text-ink-soft dark:text-ink-soft-dark">
+              We've sent a confirmation link. Once verified, you can log in.
+            </p>
+            <Button className="mt-6" onClick={() => navigate("/login")}>Go to log in</Button>
+          </div>
+        </div>
+      </PageBackdrop>
     );
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col px-6 py-16">
-      <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">Create an account</h1>
-      <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Buy tickets, or apply to sell them.</p>
+    <PageBackdrop image="/backgrounds/afriticket-hero.jpg">
+      <div className="mx-auto flex max-w-md flex-col px-6 py-16">
+        <div className="rounded-3xl border border-border-warm/70 bg-paper/95 p-7 shadow-xl shadow-ink/10 backdrop-blur-sm dark:border-border-dark/70 dark:bg-paper-dark/95">
+          <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">Create an account</h1>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Buy tickets, or apply to sell them.</p>
 
-      {!configured && (
-        <Card className="mt-4 border-rust/30 bg-rust/5 p-4 text-sm text-rust">
-          Supabase isn't connected yet — accounts won't work until credentials are added to <code>.env</code>.
-        </Card>
-      )}
+          {!configured && (
+            <Card className="mt-4 border-rust/30 bg-rust/5 p-4 text-sm text-rust">
+              Supabase isn't connected yet — accounts won't work until credentials are added to <code>.env</code>.
+            </Card>
+          )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
           <label htmlFor="fullName" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Full name</label>
           <Input id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -65,11 +72,13 @@ export function SignUpPage() {
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? "Creating account…" : "Create account"}
         </Button>
-      </form>
+          </form>
 
-      <p className="mt-6 text-center text-sm text-ink-soft dark:text-ink-soft-dark">
-        Already have an account? <Link to="/login" className="font-semibold text-saffron-text hover:underline dark:text-saffron">Log in</Link>
-      </p>
-    </div>
+          <p className="mt-6 text-center text-sm text-ink-soft dark:text-ink-soft-dark">
+            Already have an account? <Link to="/login" className="font-semibold text-saffron-text hover:underline dark:text-saffron">Log in</Link>
+          </p>
+        </div>
+      </div>
+    </PageBackdrop>
   );
 }

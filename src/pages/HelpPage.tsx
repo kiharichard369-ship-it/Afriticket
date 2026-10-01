@@ -1,3 +1,5 @@
+import { PageBackdrop } from "../components/layout/PageBackdrop";
+
 const FAQS = [
   {
     q: "How do I buy a ticket?",
@@ -23,28 +25,33 @@ const FAQS = [
 
 export function HelpPage() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="font-display text-4xl font-semibold text-ink dark:text-ink-dark">Support centre</h1>
-      <p className="mt-3 text-ink-soft dark:text-ink-soft-dark">
-        Answers to the most common questions. Still stuck? Reach us directly at{" "}
-        <a href="mailto:afriticket@gmail.com" className="font-medium text-saffron-text hover:underline dark:text-saffron">
-          afriticket@gmail.com
-        </a>{" "}
-        or{" "}
-        <a href="tel:0115577319" className="font-medium text-saffron-text hover:underline dark:text-saffron">
-          0115 577 319
-        </a>
-        .
-      </p>
+    <PageBackdrop>
+      <div className="mx-auto max-w-2xl px-6 py-16">
+        <section className="rounded-3xl border border-border-warm/70 bg-paper/90 p-7 shadow-lg shadow-ink/5 backdrop-blur-sm dark:border-border-dark/70 dark:bg-paper-dark/90 sm:p-10">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-saffron-text dark:text-saffron">Need a hand?</p>
+          <h1 className="mt-3 font-display text-4xl font-semibold text-ink dark:text-ink-dark">Support centre</h1>
+          <p className="mt-3 text-ink-soft dark:text-ink-soft-dark">
+            Answers to the most common questions. Still stuck? Reach us directly at{" "}
+            <a href="mailto:afriticket@gmail.com" className="font-medium text-saffron-text hover:underline dark:text-saffron">
+              afriticket@gmail.com
+            </a>{" "}
+            or{" "}
+            <a href="tel:0115577319" className="font-medium text-saffron-text hover:underline dark:text-saffron">
+              0115 577 319
+            </a>
+            .
+          </p>
 
-      <div className="mt-8 space-y-6">
-        {FAQS.map((item) => (
-          <div key={item.q}>
-            <h2 className="font-display text-lg font-semibold text-ink dark:text-ink-dark">{item.q}</h2>
-            <p className="mt-1 leading-relaxed text-ink-soft dark:text-ink-soft-dark">{item.a}</p>
+          <div className="mt-8 space-y-6">
+            {FAQS.map((item) => (
+              <div key={item.q} className="border-t border-border-warm/70 pt-5 first:border-t-0 first:pt-0 dark:border-border-dark/70">
+                <h2 className="font-display text-lg font-semibold text-ink dark:text-ink-dark">{item.q}</h2>
+                <p className="mt-1 leading-relaxed text-ink-soft dark:text-ink-soft-dark">{item.a}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        </section>
       </div>
-    </div>
+    </PageBackdrop>
   );
 }

@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { PageBackdrop } from "../components/layout/PageBackdrop";
 
 export function LoginPage() {
   const { signIn, configured } = useAuth();
@@ -61,19 +62,21 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col px-6 py-16">
-      <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">Log in</h1>
-      <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
-        Buyers and organisers use the same account.
-      </p>
+    <PageBackdrop image="/backgrounds/afriticket-hero.jpg">
+      <div className="mx-auto flex max-w-md flex-col px-6 py-16">
+        <div className="rounded-3xl border border-border-warm/70 bg-paper/95 p-7 shadow-xl shadow-ink/10 backdrop-blur-sm dark:border-border-dark/70 dark:bg-paper-dark/95">
+          <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">Log in</h1>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+            Buyers and organisers use the same account.
+          </p>
 
-      {!configured && (
-        <Card className="mt-4 border-rust/30 bg-rust/5 p-4 text-sm text-rust">
-          Supabase isn't connected yet — accounts won't work until credentials are added to <code>.env</code>.
-        </Card>
-      )}
+          {!configured && (
+            <Card className="mt-4 border-rust/30 bg-rust/5 p-4 text-sm text-rust">
+              Supabase isn't connected yet — accounts won't work until credentials are added to <code>.env</code>.
+            </Card>
+          )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
           <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Email</label>
           <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -86,11 +89,13 @@ export function LoginPage() {
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? "Logging in…" : "Log in"}
         </Button>
-      </form>
+          </form>
 
-      <p className="mt-6 text-center text-sm text-ink-soft dark:text-ink-soft-dark">
-        New here? <Link to="/signup" className="font-semibold text-saffron-text hover:underline dark:text-saffron">Create an account</Link>
-      </p>
-    </div>
+          <p className="mt-6 text-center text-sm text-ink-soft dark:text-ink-soft-dark">
+            New here? <Link to="/signup" className="font-semibold text-saffron-text hover:underline dark:text-saffron">Create an account</Link>
+          </p>
+        </div>
+      </div>
+    </PageBackdrop>
   );
 }
