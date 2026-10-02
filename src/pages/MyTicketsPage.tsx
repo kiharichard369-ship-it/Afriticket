@@ -16,6 +16,11 @@ interface TicketWithEvent {
   backup_code: string;
   status: string;
   order_id: string;
+  purchase: {
+    buyer_email: string | null;
+    buyer_phone: string | null;
+    reference: string;
+  } | null;
   event: { title: string; starts_at: string; slug: string; venue?: { name: string; town: string } } | null;
 }
 
@@ -54,9 +59,9 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
     <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
       <div className="flex justify-center">
         {qrDataUrl ? (
-          <img src={qrDataUrl} alt="Ticket QR code" className="h-32 w-32 rounded-lg border border-border-warm dark:border-border-dark" />
+          <img src={qrDataUrl} alt={`QR code for ${ticket.event?.title ?? "your ticket"}`} className="h-32 w-32 rounded-lg border border-border-warm dark:border-border-dark" />
         ) : (
-          <div className="h-32 w-32 animate-pulse rounded-lg bg-ink/10" />
+          <div className="h-32 w-32 animate-pulse rounded-lg bg-ink/10" aria-label="Generating ticket QR code" />
         )}
       </div>
       <div className="flex-1">
@@ -72,6 +77,16 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
             {ticket.event.venue && ` · ${ticket.event.venue.name}, ${ticket.event.venue.town}`}
           </p>
         )}
+        <dl className="mt-3 grid gap-1 text-xs text-ink-soft dark:text-ink-soft-dark sm:grid-cols-2">
+          <div>
+            <dt className="font-medium text-ink-faint">Purchase email</dt>
+            <dd className="break-all text-ink dark:text-ink-dark">{ticket.purchase?.buyer_email ?? "Not provided"}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-ink-faint">Purchase phone</dt>
+            <dd className="text-ink dark:text-ink-dark">{ticket.purchase?.buyer_phone ?? "Not provided"}</dd>
+          </div>
+        </dl>
         <p className="mt-2 text-xs text-ink-faint">
           Backup code (if the QR won't scan): <span className="font-mono font-semibold text-ink dark:text-ink-dark">{ticket.backup_code}</span>
         </p>
@@ -95,23 +110,47 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
 export function MyTicketsPage() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<TicketWithEvent[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase || !user) return;
     const db = supabase as NonNullable<typeof supabase>;
     let cancelled = false;
+    let loading = false;
+    let claimErrorMessage: string | null = null;
+
     async function loadTickets() {
-      // Recover a paid guest checkout made with this verified account email.
-      // The RPC only claims unowned, paid orders with an exact normalized email match.
-      await db.rpc("claim_paid_guest_orders");
-      const { data } = await db
-        .from("tickets")
-        .select("id, public_code, backup_code, status, order_id, event:events(title, starts_at, slug, venue:venues(name, town))")
-        .order("issued_at", { ascending: false });
-      if (!cancelled) setTickets((data as unknown as TicketWithEvent[]) ?? []);
+      if (loading) return;
+      loading = true;
+      try {
+        // Recover a paid guest checkout made with this verified account email.
+        // The RPC only claims unowned, paid orders with an exact normalized email match.
+        const { error: claimError } = await db.rpc("claim_paid_guest_orders");
+        // Ticket reads must remain useful for accounts whose tickets already have
+        // buyer_id set. Older deployments may not have the guest-claim migration.
+        claimErrorMessage = claimError ? `We couldn't link guest purchases to this account: ${claimError.message}` : null;
+
+        const { data, error } = await db
+          .from("tickets")
+          .select("id, public_code, backup_code, status, order_id, purchase:orders!tickets_order_id_fkey(buyer_email, buyer_phone, reference), event:events(title, starts_at, slug, venue:venues(name, town))")
+          .order("issued_at", { ascending: false });
+        if (error) throw new Error(`We couldn't load your tickets: ${error.message}`);
+        if (!cancelled) {
+          setTickets((data as unknown as TicketWithEvent[]) ?? []);
+          setLoadError(data && data.length > 0 ? null : claimErrorMessage);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTickets([]);
+          setLoadError((error as Error).message);
+        }
+      } finally {
+        loading = false;
+      }
     }
-    loadTickets();
-    const refreshTimer = window.setInterval(loadTickets, 5000);
+
+    void loadTickets();
+    const refreshTimer = window.setInterval(() => void loadTickets(), 5000);
     return () => {
       cancelled = true;
       window.clearInterval(refreshTimer);
@@ -137,11 +176,17 @@ export function MyTicketsPage() {
       <div className="mt-6 space-y-4">
         {tickets === null ? (
           <p className="text-ink-soft dark:text-ink-soft-dark">Loading…</p>
+        ) : loadError ? (
+          <Card className="border-rust/40 p-5" role="alert">
+            <h2 className="font-semibold text-ink dark:text-ink-dark">We couldn't load your tickets</h2>
+            <p className="mt-1 text-sm text-rust">{loadError}</p>
+            <p className="mt-2 text-xs text-ink-soft dark:text-ink-soft-dark">Your payment may still be safe. Please refresh shortly or contact support with your payment confirmation.</p>
+          </Card>
         ) : tickets.length === 0 ? (
           <EmptyState
             icon={<TicketIcon className="h-8 w-8 text-ink-faint" />}
             title="No tickets yet"
-            description="Once you buy a ticket, it'll show up here with a QR code for entry."
+            description="Once you buy a ticket, it'll show up here with a QR code for entry. If you have already paid, refresh shortly while payment confirmation completes."
             actionLabel="Browse events"
             onAction={() => (window.location.href = "/")}
           />
