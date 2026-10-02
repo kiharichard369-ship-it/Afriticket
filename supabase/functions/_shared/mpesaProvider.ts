@@ -112,7 +112,8 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
       }),
     });
     const data = await res.json();
-    const status = data.ResultCode === 0 ? "succeeded" : data.ResultCode === undefined ? "pending" : "failed";
+    const resultCode = data.ResultCode === undefined || data.ResultCode === null ? undefined : Number(data.ResultCode);
+    const status = resultCode === 0 ? "succeeded" : resultCode === undefined ? "pending" : "failed";
     return { providerReference, status, raw: data };
   }
 

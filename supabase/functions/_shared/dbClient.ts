@@ -20,6 +20,7 @@ export interface DbClient {
   confirmPayment(paymentId: string): Promise<{ orderId: string; ticketsIssued: number }>;
   failPayment(paymentId: string, reason: string): Promise<void>;
   findPaymentByProviderReference(provider: string, providerReference: string): Promise<PaymentRow | null>;
+  recordPaymentReceipt?: (paymentId: string, receipt: string) => Promise<void>;
   /** Returns false if this exact provider event was already recorded (dedupe). */
   recordWebhookEventIfNew(provider: string, providerEventId: string, payload: unknown): Promise<boolean>;
 }
@@ -73,6 +74,10 @@ export function createSupabaseDbClient(
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+    async recordPaymentReceipt(paymentId, receipt) {
+      const { error } = await client.from("payments").update({ mpesa_receipt_number: receipt }).eq("id", paymentId);
+      if (error) throw error;
     },
     async recordWebhookEventIfNew(provider, providerEventId, payload) {
       const { error } = await client

@@ -36,8 +36,10 @@ export async function handleMpesaWebhook(req: Request, deps: WebhookDeps): Promi
 
   const isNewEvent = await deps.db.recordWebhookEventIfNew("mpesa", verification.providerEventId, JSON.parse(rawBody));
   if (!isNewEvent) {
-    log.info("webhook_duplicate_ignored", { providerEventId: verification.providerEventId });
-    return jsonResponse(ACK, 200);
+    // A prior attempt may have recorded the event but failed while issuing
+    // tickets. Re-run the idempotent payment transition so a later Daraja
+    // delivery can recover that order instead of being acknowledged too early.
+    log.warn("webhook_duplicate_reprocessing", { providerEventId: verification.providerEventId });
   }
 
   const payment = await deps.db.findPaymentByProviderReference("mpesa", verification.providerReference);
@@ -46,6 +48,11 @@ export async function handleMpesaWebhook(req: Request, deps: WebhookDeps): Promi
     // initiating. Log-worthy, but still ack so Daraja doesn't retry forever.
     log.error("webhook_payment_not_found", { providerReference: verification.providerReference });
     return jsonResponse(ACK, 200);
+  }
+
+  const receipt = (verification.raw as { mpesaReceiptNumber?: unknown } | undefined)?.mpesaReceiptNumber;
+  if (typeof receipt === "string" && receipt.trim() && deps.db.recordPaymentReceipt) {
+    await deps.db.recordPaymentReceipt(payment.id, receipt.trim());
   }
 
   if (verification.status === "succeeded") {

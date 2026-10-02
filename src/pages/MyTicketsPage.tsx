@@ -111,6 +111,9 @@ export function MyTicketsPage() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<TicketWithEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [recoveryState, setRecoveryState] = useState<"idle" | "checking" | "success" | "error">("idle");
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase || !user) return;
@@ -157,6 +160,23 @@ export function MyTicketsPage() {
     };
   }, [user]);
 
+  async function recoverPayment() {
+    if (!supabase || !paymentMessage.trim()) return;
+    setRecoveryState("checking");
+    setRecoveryMessage(null);
+    const { data, error } = await supabase.functions.invoke("recover-payment", {
+      body: { message: paymentMessage },
+    });
+    if (error || data?.error) {
+      setRecoveryState("error");
+      setRecoveryMessage(error?.message ?? data?.error ?? "Payment could not be verified.");
+      return;
+    }
+    setRecoveryState("success");
+    setRecoveryMessage(`${data.ticketsIssued ?? 0} ticket${data.ticketsIssued === 1 ? "" : "s"} issued. This page will update automatically.`);
+    setPaymentMessage("");
+  }
+
   if (!user) {
     return (
       <div className="mx-auto max-w-lg px-6 py-16 text-center">
@@ -172,6 +192,24 @@ export function MyTicketsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">My tickets</h1>
+
+      <Card className="mt-6 border-saffron/30 bg-saffron/5 p-5 dark:bg-saffron/10">
+        <h2 className="font-display text-lg font-semibold text-ink dark:text-ink-dark">Recover a paid ticket</h2>
+        <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
+          If M-Pesa accepted your payment but no ticket appeared, paste the complete Safaricom confirmation message here. We verify it against your Afriticket payment and your signed-in account before issuing anything.
+        </p>
+        <textarea
+          value={paymentMessage}
+          onChange={(event) => setPaymentMessage(event.target.value)}
+          rows={4}
+          placeholder="Paste the Safaricom M-Pesa confirmation SMS…"
+          className="mt-4 w-full rounded-lg border border-border-warm bg-paper p-3 text-sm text-ink outline-none ring-saffron focus:ring-2 dark:border-border-dark dark:bg-paper-dark dark:text-ink-dark"
+        />
+        <Button className="mt-3" disabled={!paymentMessage.trim() || recoveryState === "checking"} onClick={recoverPayment}>
+          {recoveryState === "checking" ? "Verifying payment…" : "Verify and issue ticket"}
+        </Button>
+        {recoveryMessage && <p className={`mt-3 text-sm ${recoveryState === "error" ? "text-rust" : "text-sage"}`} role="status">{recoveryMessage}</p>}
+      </Card>
 
       <div className="mt-6 space-y-4">
         {tickets === null ? (

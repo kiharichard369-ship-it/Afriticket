@@ -37,6 +37,7 @@ export interface CallbackVerification {
   providerReference: string;
   status: PaymentOutcomeStatus;
   failureReason?: string;
+  raw?: unknown;
 }
 
 export interface RefundResult {

@@ -1,6 +1,6 @@
 # Afriticket — Edge Functions
 
-Three functions, all Deno. None is deployed by this codebase — that
+Four functions, all Deno. None is deployed by this codebase — that
 happens once via the Supabase CLI, from your machine, against your project.
 
 ## What's here
@@ -30,6 +30,11 @@ happens once via the Supabase CLI, from your machine, against your project.
   The queue key (`notifications.id`) is passed to providers as the request
   idempotency key. Configure the provider and scheduler below before treating
   email delivery as live.
+- `recover-payment/` — an authenticated buyer recovery endpoint. It accepts a
+  pasted Safaricom message, matches an Afriticket order/reference or a single
+  buyer-owned pending payment, then queries production Daraja before invoking
+  the idempotent ticket-issuance RPC. It never trusts pasted text as proof of
+  payment.
 
 ## Tested, and how
 
@@ -69,6 +74,7 @@ supabase functions deploy initiate-payment
 supabase functions deploy mpesa-webhook --no-verify-jwt
 # Internal worker: keep Supabase JWT verification enabled.
 supabase functions deploy deliver-notifications
+supabase functions deploy recover-payment
 ```
 
 `--no-verify-jwt` is required on `mpesa-webhook`: Safaricom calls it with
