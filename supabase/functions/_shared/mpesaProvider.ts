@@ -38,17 +38,29 @@ function metadataValue(items: Array<{ Name: string; Value?: unknown }> | undefin
   return items?.find((i) => i.Name === name)?.Value;
 }
 
+// Daraja access tokens last about an hour. Warm Edge Function instances reuse
+// this cache, which removes one network round trip from most payments.
+let cachedToken: { key: string; value: string; expiresAt: number } | null = null;
+
 export class MpesaPaymentAdapter implements PaymentAdapter {
   readonly name = "mpesa";
   constructor(private config: MpesaConfig) {}
 
   private async getAccessToken(): Promise<string> {
+    const cacheKey = `${this.config.baseUrl}|${this.config.consumerKey}`;
+    if (cachedToken && cachedToken.key === cacheKey && cachedToken.expiresAt > Date.now() + 60_000) {
+      return cachedToken.value;
+    }
+
     const credentials = toBase64(`${this.config.consumerKey}:${this.config.consumerSecret}`);
     const res = await fetch(`${this.config.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
       headers: { Authorization: `Basic ${credentials}` },
     });
     if (!res.ok) throw new Error(`M-Pesa auth failed: ${res.status} ${await res.text()}`);
     const data = await res.json();
+
+    const lifetimeSeconds = Number(data.expires_in) || 3000;
+    cachedToken = { key: cacheKey, value: data.access_token, expiresAt: Date.now() + lifetimeSeconds * 1000 };
     return data.access_token;
   }
 
@@ -86,6 +98,8 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
 
     const data = await res.json();
     if (!res.ok || data.ResponseCode !== "0") {
+      // A rejected token (e.g. revoked early) must not stay cached.
+      if (res.status === 401) cachedToken = null;
       throw new Error(`STK push rejected: ${data.errorMessage ?? data.ResponseDescription ?? res.status}`);
     }
 
@@ -111,9 +125,12 @@ export class MpesaPaymentAdapter implements PaymentAdapter {
         CheckoutRequestID: providerReference,
       }),
     });
+    if (res.status === 401) cachedToken = null;
     const data = await res.json();
     const resultCode = data.ResultCode === undefined || data.ResultCode === null ? undefined : Number(data.ResultCode);
-    const status = resultCode === 0 ? "succeeded" : resultCode === undefined ? "pending" : "failed";
+    // 0 = paid. No result yet, or 4999 ("still under processing"), = keep waiting.
+    // Any other code (1032 cancelled, 1037 timeout, 1 insufficient funds, ...) is final.
+    const status = resultCode === 0 ? "succeeded" : resultCode === undefined || resultCode === 4999 ? "pending" : "failed";
     return { providerReference, status, raw: data };
   }
 

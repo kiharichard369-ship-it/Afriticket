@@ -205,44 +205,78 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   useEffect(() => {
     if (step !== "pending" || !paymentOrderId || !supabase) return;
     const db = supabase;
+    const orderId = paymentOrderId;
     let cancelled = false;
-    let attempts = 0;
+    let ticks = 0;
+    let checking = false;
+    let verifying = false;
 
+    // Cheap: reads our own database, which the webhook or check-payment updates.
     async function checkPayment() {
-      attempts += 1;
-      const [{ data: order }, { data: payment }] = await Promise.all([
-        db.from("orders").select("status").eq("id", paymentOrderId).maybeSingle(),
-        db.from("payments").select("status").eq("order_id", paymentOrderId).order("initiated_at", { ascending: false }).limit(1).maybeSingle(),
-      ]);
-      if (cancelled) return;
-
-      if (order?.status === "paid" || payment?.status === "succeeded") {
-        const { data: issuedTickets } = await db.from("tickets").select("id").eq("order_id", paymentOrderId);
+      if (checking) return;
+      checking = true;
+      try {
+        const [{ data: order }, { data: payment }] = await Promise.all([
+          db.from("orders").select("status").eq("id", orderId).maybeSingle(),
+          db.from("payments").select("status").eq("order_id", orderId).order("initiated_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
         if (cancelled) return;
-        if (issuedTickets && issuedTickets.length > 0) {
-          setTicketsIssued(issuedTickets.length);
-          setPaymentPollMessage("Payment confirmed and tickets issued.");
-          setStep("success");
-          void deliverTickets(paymentOrderId as string);
+
+        if (order?.status === "paid" || payment?.status === "succeeded") {
+          const { data: issuedTickets } = await db.from("tickets").select("id").eq("order_id", orderId);
+          if (cancelled) return;
+          if (issuedTickets && issuedTickets.length > 0) {
+            setTicketsIssued(issuedTickets.length);
+            setPaymentPollMessage("Payment confirmed and tickets issued.");
+            setStep("success");
+            void deliverTickets(orderId);
+            return;
+          }
+        }
+
+        if (order?.status === "failed" || payment?.status === "failed") {
+          setError("Safaricom reported that the payment was not completed. You can try again.");
+          setStep("failed");
           return;
         }
-      }
 
-      if (order?.status === "failed" || payment?.status === "failed") {
-        setError("Safaricom reported that the payment was not completed. You can try again.");
-        setStep("failed");
-        return;
-      }
-
-      if (attempts >= 40) {
-        setPaymentPollMessage("Payment is still being confirmed. Your tickets will be emailed once it's confirmed, and you can get them by logging in with the same email.");
-      } else {
-        setPaymentPollMessage("Payment request received. Keep this window open while Safaricom confirms it…");
+        setPaymentPollMessage(
+          ticks >= 60
+            ? "Payment is still being confirmed. Your tickets will be emailed once it's confirmed, and you can get them by logging in with the same email."
+            : "Payment request received. Keep this window open while Safaricom confirms it…",
+        );
+      } finally {
+        checking = false;
       }
     }
 
-    checkPayment();
-    const timer = window.setInterval(checkPayment, 3000);
+    // Asks Safaricom directly, so we don't have to wait for their callback.
+    async function verifyWithSafaricom() {
+      if (verifying) return;
+      verifying = true;
+      try {
+        const { data } = await db.functions.invoke("check-payment", { body: { orderId } });
+        if (cancelled) return;
+        if (data?.status === "succeeded" || data?.status === "failed") await checkPayment();
+      } catch {
+        // Temporary problem: the next tick tries again.
+      } finally {
+        verifying = false;
+      }
+    }
+
+    async function tick() {
+      ticks += 1;
+      await checkPayment();
+      if (cancelled) return;
+      // Every 4s from second 6 to second 90, then every 16s (Daraja rate-limits queries).
+      const early = ticks >= 3 && ticks <= 45 && ticks % 2 === 0;
+      const late = ticks > 45 && ticks % 8 === 0;
+      if (early || late) void verifyWithSafaricom();
+    }
+
+    void checkPayment();
+    const timer = window.setInterval(() => void tick(), 2000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
