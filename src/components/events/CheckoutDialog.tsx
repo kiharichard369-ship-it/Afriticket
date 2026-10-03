@@ -36,11 +36,17 @@ async function functionErrorMessage(error: unknown, fallback: string): Promise<s
   return fallback;
 }
 
+/** Pre-selects one ticket of the first type that is still in stock. */
+function defaultQuantities(event: EventDetail): Record<string, number> {
+  const first = event.ticketTypes.find((t) => t.remaining > 0 && t.perOrderLimit >= 1);
+  return first ? { [first.id]: 1 } : {};
+}
+
 type Step = "select" | "phone" | "processing" | "success" | "failed" | "pending" | "error";
 
 export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDetail; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { user } = useAuth();
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [quantities, setQuantities] = useState<Record<string, number>>(() => defaultQuantities(event));
   const [sessionKey, setSessionKey] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("select");
   const [phone, setPhone] = useState("");
@@ -64,10 +70,16 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   const internationalPhone = `${selectedPhoneCountry.dialCode}${localPhone}`;
   const emailOk = EMAIL_PATTERN.test(email.trim());
 
+  // Start every time the dialog opens with 1 ticket already selected.
+  useEffect(() => {
+    if (open) setQuantities(defaultQuantities(event));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, event.id]);
+
   function reset() {
     setStep("select");
     setError(null);
-    setQuantities({});
+    setQuantities(defaultQuantities(event));
     setSessionKey(crypto.randomUUID());
     setPaymentOrderId(null);
     setPaymentPollMessage("Waiting for Safaricom to confirm your payment…");
