@@ -25,7 +25,8 @@ export function DiscoveryPage() {
         className="relative overflow-hidden border-b border-border-warm bg-paper-raised bg-cover bg-center dark:border-border-dark dark:bg-surface-dark"
         style={{ backgroundImage: `url(${wallpaperUrl ?? "/backgrounds/afriticket-hero.jpg"})` }}
       >
-        <div className="pointer-events-none absolute inset-0 bg-paper-raised/80 dark:bg-surface-dark/80" />
+        {/* Strong behind the text, fading away so the picture shows clearly. Top-to-bottom on phones. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-paper-raised/85 via-paper-raised/60 to-paper-raised/25 dark:from-surface-dark/85 dark:via-surface-dark/60 dark:to-surface-dark/25 sm:bg-gradient-to-r sm:from-paper-raised/90 sm:via-paper-raised/50 sm:to-paper-raised/0 sm:dark:from-surface-dark/90 sm:dark:via-surface-dark/50 sm:dark:to-surface-dark/0" />
         <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-blob rounded-full bg-saffron/30 blur-3xl" />
         <div className="pointer-events-none absolute -right-16 top-10 h-64 w-64 animate-blob rounded-full bg-rust/20 blur-3xl [animation-delay:3s]" />
         <div className="pointer-events-none absolute bottom-0 left-1/3 h-56 w-56 animate-blob rounded-full bg-sage/25 blur-3xl [animation-delay:6s]" />
