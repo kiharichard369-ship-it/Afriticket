@@ -8,7 +8,8 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { formatEventDate, formatEventTime } from "../lib/date";
-import { Ticket as TicketIcon } from "lucide-react";
+import { downloadTicketsPng, toDownloadable } from "../lib/ticketFiles";
+import { Download, Ticket as TicketIcon } from "lucide-react";
 
 interface TicketWithEvent {
   id: string;
@@ -36,6 +37,8 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [refundState, setRefundState] = useState<"idle" | "requesting" | "requested" | "error">("idle");
   const [refundError, setRefundError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     QRCode.toDataURL(ticket.public_code, { margin: 1, width: 180 }).then(setQrDataUrl);
@@ -52,6 +55,19 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
       setRefundState("error");
     } else {
       setRefundState("requested");
+    }
+  }
+
+  async function download() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const base = ticket.purchase?.reference ?? ticket.public_code.slice(0, 8);
+      await downloadTicketsPng([toDownloadable(ticket)], `afriticket-${base}-${ticket.backup_code}`);
+    } catch (error) {
+      setDownloadError((error as Error).message || "Couldn't create the download. Please try again.");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -90,18 +106,24 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
         <p className="mt-2 text-xs text-ink-faint">
           Backup code (if the QR won't scan): <span className="font-mono font-semibold text-ink dark:text-ink-dark">{ticket.backup_code}</span>
         </p>
-        {ticket.status === "valid" && (
-          <div className="mt-3">
-            {refundState === "requested" ? (
-              <p className="text-xs text-sage">Refund requested — the organiser will review it.</p>
-            ) : (
-              <Button variant="ghost" size="sm" disabled={refundState === "requesting"} onClick={requestRefund}>
-                {refundState === "requesting" ? "Requesting…" : "Request refund"}
-              </Button>
-            )}
-            {refundState === "error" && <p className="mt-1 text-xs text-rust">{refundError}</p>}
+        {(ticket.status === "valid" || ticket.status === "used") && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" disabled={downloading} onClick={download}>
+              <Download aria-hidden="true" className="h-4 w-4" />
+              {downloading ? "Preparing…" : "Download ticket"}
+            </Button>
+            {ticket.status === "valid" &&
+              (refundState === "requested" ? (
+                <p className="text-xs text-sage">Refund requested — the organiser will review it.</p>
+              ) : (
+                <Button variant="ghost" size="sm" disabled={refundState === "requesting"} onClick={requestRefund}>
+                  {refundState === "requesting" ? "Requesting…" : "Request refund"}
+                </Button>
+              ))}
           </div>
         )}
+        {downloadError && <p className="mt-1 text-xs text-rust">{downloadError}</p>}
+        {refundState === "error" && <p className="mt-1 text-xs text-rust">{refundError}</p>}
       </div>
     </Card>
   );
@@ -109,6 +131,8 @@ function TicketCard({ ticket }: { ticket: TicketWithEvent }) {
 
 export function MyTicketsPage() {
   const { user } = useAuth();
+  // Guests who paid without an account hold an anonymous session; they must log in to see tickets here.
+  const isGuest = !user || Boolean(user.is_anonymous);
   const [tickets, setTickets] = useState<TicketWithEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [paymentMessage, setPaymentMessage] = useState("");
@@ -116,7 +140,7 @@ export function MyTicketsPage() {
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabase || !user) return;
+    if (!supabase || !user || user.is_anonymous) return;
     const db = supabase as NonNullable<typeof supabase>;
     let cancelled = false;
     let loading = false;
@@ -126,11 +150,8 @@ export function MyTicketsPage() {
       if (loading) return;
       loading = true;
       try {
-        // Recover a paid guest checkout made with this verified account email.
-        // The RPC only claims unowned, paid orders with an exact normalized email match.
-        const { error: claimError } = await db.rpc("claim_paid_guest_orders");
-        // Ticket reads must remain useful for accounts whose tickets already have
-        // buyer_id set. Older deployments may not have the guest-claim migration.
+        // Attach paid guest purchases made with this account's CONFIRMED email.
+        const { error: claimError } = await db.rpc("claim_guest_orders_by_email");
         claimErrorMessage = claimError ? `We couldn't link guest purchases to this account: ${claimError.message}` : null;
 
         const { data, error } = await db
@@ -168,8 +189,15 @@ export function MyTicketsPage() {
       body: { message: paymentMessage },
     });
     if (error || data?.error) {
+      let message = data?.error ?? error?.message ?? "Payment could not be verified.";
+      try {
+        const body = await (error as { context?: Response } | null)?.context?.json();
+        if (body?.error) message = String(body.error);
+      } catch {
+        /* keep the generic message */
+      }
       setRecoveryState("error");
-      setRecoveryMessage(error?.message ?? data?.error ?? "Payment could not be verified.");
+      setRecoveryMessage(message);
       return;
     }
     setRecoveryState("success");
@@ -177,13 +205,16 @@ export function MyTicketsPage() {
     setPaymentMessage("");
   }
 
-  if (!user) {
+  if (isGuest) {
     return (
       <div className="mx-auto max-w-lg px-6 py-16 text-center">
         <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">My tickets</h1>
         <p className="mt-2 text-ink-soft dark:text-ink-soft-dark">Log in to see tickets you've bought.</p>
+        <p className="mt-2 text-sm text-ink-soft dark:text-ink-soft-dark">
+          Bought without an account? Log in or create an account using the same email you entered at checkout, and your tickets will appear here, ready to download.
+        </p>
         <Link to="/login" state={{ from: "/my-tickets" }}>
-          <Button className="mt-6">Log in</Button>
+          <Button className="mt-6">Log in or sign up</Button>
         </Link>
       </div>
     );

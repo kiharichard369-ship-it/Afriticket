@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 import type { EventDetail } from "../../types/event";
 import { formatKes } from "../../lib/currency";
+import { downloadTicketsPng, fetchTicketsForOrder, type DownloadableTicket } from "../../lib/ticketFiles";
 import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -22,6 +23,19 @@ function normalizeLocalPhone(value: string) {
   return value.replace(/\D/g, "").replace(/^0+/, "");
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** supabase-js hides the server's message behind a generic error; read it from the response. */
+async function functionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  try {
+    const body = await (error as { context?: Response }).context?.json();
+    if (body?.error) return String(body.error);
+  } catch {
+    /* keep the fallback */
+  }
+  return fallback;
+}
+
 type Step = "select" | "phone" | "processing" | "success" | "failed" | "pending" | "error";
 
 export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDetail; open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -36,6 +50,11 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   const [ticketsIssued, setTicketsIssued] = useState(0);
   const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
   const [paymentPollMessage, setPaymentPollMessage] = useState("Waiting for Safaricom to confirm your payment…");
+  const [downloadable, setDownloadable] = useState<DownloadableTicket[]>([]);
+  const autoDownloadStarted = useRef(false);
+
+  // Guests get an anonymous session when they pay; they only count as "logged in" with a real account.
+  const isGuest = !user || Boolean(user.is_anonymous);
 
   const totalMinor = event.ticketTypes.reduce((sum, t) => sum + t.priceMinor * (quantities[t.id] ?? 0), 0);
   const totalQty = Object.values(quantities).reduce((a, b) => a + b, 0);
@@ -43,6 +62,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
   const selectedPhoneCountry = M_PESA_COUNTRIES.find((country) => country.code === phoneCountry) ?? M_PESA_COUNTRIES[0];
   const localPhone = normalizeLocalPhone(phone);
   const internationalPhone = `${selectedPhoneCountry.dialCode}${localPhone}`;
+  const emailOk = EMAIL_PATTERN.test(email.trim());
 
   function reset() {
     setStep("select");
@@ -51,6 +71,8 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
     setSessionKey(crypto.randomUUID());
     setPaymentOrderId(null);
     setPaymentPollMessage("Waiting for Safaricom to confirm your payment…");
+    setDownloadable([]);
+    autoDownloadStarted.current = false;
   }
 
   function close() {
@@ -65,13 +87,24 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       close();
       return;
     }
-    if (!user) {
-      setError("Please log in or create an account before buying tickets so they appear under My tickets.");
-      return;
-    }
     setError(null);
     setStep("phone");
   }
+
+  // Fetches the freshly issued tickets and saves them to the device, once per checkout.
+  const deliverTickets = useCallback(async (orderId: string) => {
+    if (!supabase || autoDownloadStarted.current) return;
+    autoDownloadStarted.current = true;
+    try {
+      const tickets = await fetchTicketsForOrder(supabase, orderId);
+      setDownloadable(tickets);
+      if (tickets.length > 0) {
+        await downloadTicketsPng(tickets, `afriticket-${tickets[0].orderReference || orderId.slice(0, 8)}`);
+      }
+    } catch {
+      // Browsers can block automatic downloads; the visible Download button covers that.
+    }
+  }, []);
 
   async function submitCheckout() {
     if (!supabase || selectedTypes.length === 0) return;
@@ -79,11 +112,24 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       setError("Enter a valid local phone number using digits only.");
       return;
     }
+    if (!emailOk) {
+      setError("Enter a valid email address. It's how you can get your tickets again later.");
+      return;
+    }
     const db = supabase;
     setStep("processing");
     setError(null);
 
     try {
+      // No account needed: start a guest (anonymous) session if nobody is signed in.
+      const { data: sessionData } = await db.auth.getSession();
+      if (!sessionData.session) {
+        const { error: anonError } = await db.auth.signInAnonymously();
+        if (anonError) {
+          throw new Error(`We couldn't start guest checkout (${anonError.message}). Please try again or log in.`);
+        }
+      }
+
       // Only opaque ticket IDs and quantities leave the browser. The database
       // function locks inventory rows and computes the actual holds.
       const { data: holds, error: holdError } = await db.rpc("create_ticket_holds", {
@@ -105,7 +151,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       const { data: order, error: orderError } = await db.rpc("create_pending_order_multi", {
         p_hold_ids: holdIds,
         p_session_key: sessionKey,
-        p_buyer_email: email || null,
+        p_buyer_email: email.trim() || null,
         p_buyer_phone: internationalPhone || null,
         p_idempotency_key: crypto.randomUUID(),
       }).single();
@@ -115,23 +161,23 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
         // payment failures are released by fail_payment on the server.
         throw new Error(orderError.message);
       }
+      const orderId = (order as { id: string }).id;
 
       const { data: initiation, error: fnError } = await db.functions.invoke("initiate-payment", {
         // The Edge Function reads order.total_minor from the database. Do not
         // send the client-estimated total or line prices to the payment path.
-        body: { orderId: (order as { id: string }).id, phoneNumber: internationalPhone },
+        body: { orderId, phoneNumber: internationalPhone },
       });
       if (fnError) {
-        throw new Error(
-          "Checkout is set up in the database, but the initiate-payment Edge Function isn't deployed yet — see supabase/functions/README.md."
-        );
+        throw new Error(await functionErrorMessage(fnError, "Payment could not be started. Please try again."));
       }
 
       if (initiation.status === "succeeded") {
         setTicketsIssued(initiation.ticketsIssued ?? totalQty);
         setStep("success");
+        void deliverTickets(orderId);
       } else if (initiation.status === "pending") {
-        setPaymentOrderId((order as { id: string }).id);
+        setPaymentOrderId(orderId);
         setPaymentPollMessage("Waiting for Safaricom to confirm your payment…");
         setStep("pending");
       } else {
@@ -154,7 +200,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       attempts += 1;
       const [{ data: order }, { data: payment }] = await Promise.all([
         db.from("orders").select("status").eq("id", paymentOrderId).maybeSingle(),
-        db.from("payments").select("status").eq("order_id", paymentOrderId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        db.from("payments").select("status").eq("order_id", paymentOrderId).order("initiated_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (cancelled) return;
 
@@ -165,6 +211,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
           setTicketsIssued(issuedTickets.length);
           setPaymentPollMessage("Payment confirmed and tickets issued.");
           setStep("success");
+          void deliverTickets(paymentOrderId as string);
           return;
         }
       }
@@ -176,7 +223,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       }
 
       if (attempts >= 40) {
-        setPaymentPollMessage("Payment is still being confirmed. You can close this window; your tickets will appear after confirmation.");
+        setPaymentPollMessage("Payment is still being confirmed. Your tickets will be emailed once it's confirmed, and you can get them by logging in with the same email.");
       } else {
         setPaymentPollMessage("Payment request received. Keep this window open while Safaricom confirms it…");
       }
@@ -188,7 +235,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [step, paymentOrderId]);
+  }, [step, paymentOrderId, deliverTickets]);
 
   const selectedTypeNames = selectedTypes.map((ticketType) => ticketType.name).join(", ");
 
@@ -246,9 +293,10 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
 
           {error && <p role="alert" className="text-sm text-rust">{error}</p>}
 
-          {!user && isSupabaseConfigured && (
+          {isGuest && isSupabaseConfigured && (
             <p className="text-center text-xs text-ink-soft dark:text-ink-soft-dark">
-              <Link to="/login" state={{ from: window.location.pathname }}>Log in</Link> or create an account before checkout.
+              No account needed. Your tickets download as soon as you pay.{" "}
+              <Link to="/login" state={{ from: window.location.pathname }} className="underline">Log in</Link> if you'd rather keep them in your account.
             </p>
           )}
 
@@ -289,9 +337,15 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Email (for your ticket)</label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            {isGuest && (
+              <p className="mt-1 text-xs text-ink-faint">
+                Use an email you can access. You can log in with it later to download your tickets again.
+              </p>
+            )}
           </div>
-          <Button className="w-full" disabled={localPhone.length < 7 || localPhone.length > 12 || !email} onClick={submitCheckout}>
+          {error && <p role="alert" className="text-sm text-rust">{error}</p>}
+          <Button className="w-full" disabled={localPhone.length < 7 || localPhone.length > 12 || !emailOk} onClick={submitCheckout}>
             Continue to payment
           </Button>
           <button onClick={() => setStep("select")} className="w-full text-center text-sm text-ink-soft hover:underline dark:text-ink-soft-dark">
@@ -309,7 +363,7 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       {step === "pending" && (
         <div className="space-y-4 py-4 text-center">
           <p className="text-ink dark:text-ink-dark">Your M-Pesa payment request was accepted for +{internationalPhone}.</p>
-          <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Check that phone for the PIN prompt, enter your M-Pesa PIN, and keep this window open. {paymentPollMessage}</p>
+          <p className="text-sm text-ink-soft dark:text-ink-soft-dark">Check that phone for the PIN prompt, enter your M-Pesa PIN, and keep this window open so your tickets can download automatically. {paymentPollMessage}</p>
           <Button variant="outline" onClick={close}>Close</Button>
         </div>
       )}
@@ -317,10 +371,21 @@ export function CheckoutDialog({ event, open, onOpenChange }: { event: EventDeta
       {step === "success" && (
         <div className="space-y-4 py-4 text-center">
           <p className="text-ink dark:text-ink-dark">
-            {ticketsIssued} ticket{ticketsIssued === 1 ? "" : "s"} issued. A confirmation email with your entry code{ticketsIssued === 1 ? "" : "s"} will be sent to {email}.
+            {ticketsIssued} ticket{ticketsIssued === 1 ? "" : "s"} issued. {downloadable.length > 0 ? "Your tickets are being saved to this device. " : ""}
+            A confirmation email with your entry code{ticketsIssued === 1 ? "" : "s"} will be sent to {email}.
+          </p>
+          <Button
+            className="w-full"
+            disabled={downloadable.length === 0}
+            onClick={() => void downloadTicketsPng(downloadable, `afriticket-${downloadable[0]?.orderReference || "tickets"}`)}
+          >
+            {downloadable.length === 0 ? "Preparing your tickets…" : "Download tickets"}
+          </Button>
+          <p className="text-xs text-ink-soft dark:text-ink-soft-dark">
+            Keep this file: you can show it at the entrance, even offline. To get another copy later, log in or create an account with {email} and open My tickets.
           </p>
           <Link to="/my-tickets">
-            <Button className="w-full">View my tickets</Button>
+            <Button variant="outline" className="w-full">{isGuest ? "Go to My tickets" : "View my tickets"}</Button>
           </Link>
         </div>
       )}
