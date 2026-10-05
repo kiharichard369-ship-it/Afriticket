@@ -68,6 +68,7 @@ export function AdminModerationPage() {
   const [refunds, setRefunds] = useState<RefundRow[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
+  const [wallpaperDisabled, setWallpaperDisabled] = useState(false);
   const [wallpaperError, setWallpaperError] = useState<string | null>(null);
   const [wallpaperMessage, setWallpaperMessage] = useState<string | null>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +114,7 @@ export function AdminModerationPage() {
     setPlatformUsers((userRows as PlatformUserRow[]) ?? []);
     const settings = await siteSettingsRepository.getPublic().catch(() => null);
     setWallpaperUrl(settings?.wallpaperUrl ?? null);
+    setWallpaperDisabled(settings?.wallpaperDisabled ?? false);
     setSelectedThemeEventId(settings?.landingThemeEventId ?? "");
     setThemeEventUntil(settings?.landingThemeEventUntil ?? null);
   }
@@ -245,6 +247,25 @@ export function AdminModerationPage() {
       y += lines.length * lineHeight + 6;
     });
     doc.save(`afriticket-role-audit-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  async function toggleWallpaperDisabled(disabled: boolean) {
+    setBusyId("wallpaper-toggle");
+    setWallpaperError(null);
+    setWallpaperMessage(null);
+    try {
+      const settings = await siteSettingsRepository.setWallpaperDisabled(disabled);
+      setWallpaperDisabled(settings.wallpaperDisabled);
+      setWallpaperMessage(
+        disabled
+          ? "No background image: the landing page now shows a plain background."
+          : "Background image restored. You can choose or change the image again.",
+      );
+    } catch (toggleError) {
+      setWallpaperError((toggleError as Error).message);
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function uploadWallpaper(file: File) {
@@ -385,13 +406,28 @@ export function AdminModerationPage() {
               Upload a wide, text-free image for the public Afriticket landing hero. It is stored in the site-assets bucket and shown publicly with a readability overlay.
             </p>
           </div>
-          <div className="flex gap-2">
+          <fieldset disabled={wallpaperDisabled} className="flex min-w-0 gap-2">
             <Button size="sm" disabled={busyId === "wallpaper"} onClick={() => wallpaperInputRef.current?.click()}>
               {busyId === "wallpaper" ? "Uploading…" : "Choose image"}
             </Button>
             {wallpaperUrl && <Button size="sm" variant="outline" disabled={busyId === "wallpaper"} onClick={clearWallpaper}>Use default</Button>}
-          </div>
+          </fieldset>
         </div>
+        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 accent-saffron"
+            checked={wallpaperDisabled}
+            disabled={busyId === "wallpaper-toggle"}
+            onChange={(event) => void toggleWallpaperDisabled(event.target.checked)}
+          />
+          <span>
+            <span className="block font-medium text-ink dark:text-ink-dark">No background image</span>
+            <span className="block text-sm text-ink-soft dark:text-ink-soft-dark">
+              While ticked, the landing page shows no background picture at all, whatever image or event theme is set. Your chosen image is kept. Untick to use images again.
+            </span>
+          </span>
+        </label>
         <input
           ref={wallpaperInputRef}
           type="file"
@@ -402,8 +438,13 @@ export function AdminModerationPage() {
             if (file) void uploadWallpaper(file);
           }}
         />
-        {wallpaperUrl && <img src={wallpaperUrl} alt="Current landing-page theme" className="mt-4 aspect-[21/7] w-full rounded-lg object-cover" />}
-        <div className="mt-4 rounded-lg border border-border-warm p-3 dark:border-border-dark">
+        {wallpaperUrl && (
+          <div className="mt-4">
+            <img src={wallpaperUrl} alt="Current landing-page theme" className={`aspect-[21/7] w-full rounded-lg object-cover ${wallpaperDisabled ? "opacity-40 grayscale" : ""}`} />
+            {wallpaperDisabled && <p className="mt-1 text-xs text-ink-faint">Not shown while "No background image" is ticked.</p>}
+          </div>
+        )}
+        <fieldset disabled={wallpaperDisabled} className={`mt-4 min-w-0 rounded-lg border border-border-warm p-3 dark:border-border-dark ${wallpaperDisabled ? "opacity-50" : ""}`}>
           <h3 className="font-medium text-ink dark:text-ink-dark">Event theme priority</h3>
           <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
             Select a published event image for a 24-hour landing-page takeover. If no manual theme is active, the nearest event with an image starting within 7 days is automatically used.
@@ -423,7 +464,7 @@ export function AdminModerationPage() {
           </div>
           {themeEventUntil && <p className="mt-2 text-xs text-sage">Manual event theme active until {new Date(themeEventUntil).toLocaleString()}.</p>}
           {themeEvents.length === 0 && <p className="mt-2 text-xs text-ink-faint">No upcoming published events with cover images are available.</p>}
-        </div>
+        </fieldset>
         {wallpaperMessage && <p className="mt-3 text-sm text-sage" role="status">{wallpaperMessage}</p>}
         {wallpaperError && <p className="mt-3 text-sm text-rust" role="alert">{wallpaperError}</p>}
       </Card>

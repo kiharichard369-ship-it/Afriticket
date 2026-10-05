@@ -10,6 +10,7 @@ export interface ThemeEvent {
 export interface SiteSettings {
   wallpaperUrl: string | null;
   wallpaperUpdatedAt: string | null;
+  wallpaperDisabled: boolean;
   landingThemeEventId: string | null;
   landingThemeEventUntil: string | null;
   landingThemeEvent: ThemeEvent | null;
@@ -19,15 +20,19 @@ export interface SiteSettings {
 const FALLBACK_SETTINGS: SiteSettings = {
   wallpaperUrl: null,
   wallpaperUpdatedAt: null,
+  wallpaperDisabled: false,
   landingThemeEventId: null,
   landingThemeEventUntil: null,
   landingThemeEvent: null,
   automaticThemeEvent: null,
 };
 
+const SETTINGS_COLUMNS = "wallpaper_url, wallpaper_updated_at, wallpaper_disabled, landing_theme_event_id, landing_theme_event_until";
+
 type SettingsRow = {
   wallpaper_url?: string | null;
   wallpaper_updated_at?: string | null;
+  wallpaper_disabled?: boolean | null;
   landing_theme_event_id?: string | null;
   landing_theme_event_until?: string | null;
 };
@@ -36,6 +41,7 @@ function fromRow(row: SettingsRow | null, landingThemeEvent: ThemeEvent | null =
   return {
     wallpaperUrl: row?.wallpaper_url ?? null,
     wallpaperUpdatedAt: row?.wallpaper_updated_at ?? null,
+    wallpaperDisabled: row?.wallpaper_disabled ?? false,
     landingThemeEventId: row?.landing_theme_event_id ?? null,
     landingThemeEventUntil: row?.landing_theme_event_until ?? null,
     landingThemeEvent,
@@ -68,7 +74,7 @@ export const siteSettingsRepository = {
     if (!supabase) return FALLBACK_SETTINGS;
     const { data, error } = await supabase
       .from("site_settings")
-      .select("wallpaper_url, wallpaper_updated_at, landing_theme_event_id, landing_theme_event_until")
+      .select(SETTINGS_COLUMNS)
       .eq("id", true)
       .maybeSingle();
     if (error) throw error;
@@ -93,7 +99,7 @@ export const siteSettingsRepository = {
       .from("site_settings")
       .update({ wallpaper_url: publicUrl.publicUrl, wallpaper_updated_by: staffUserId })
       .eq("id", true)
-      .select("wallpaper_url, wallpaper_updated_at, landing_theme_event_id, landing_theme_event_until")
+      .select(SETTINGS_COLUMNS)
       .single();
     if (error) throw error;
     return fromRow(data);
@@ -105,7 +111,20 @@ export const siteSettingsRepository = {
       .from("site_settings")
       .update({ wallpaper_url: null, wallpaper_updated_by: null })
       .eq("id", true)
-      .select("wallpaper_url, wallpaper_updated_at, landing_theme_event_id, landing_theme_event_until")
+      .select(SETTINGS_COLUMNS)
+      .single();
+    if (error) throw error;
+    return fromRow(data);
+  },
+
+  /** Hides the landing-page background picture for everyone while true. */
+  async setWallpaperDisabled(disabled: boolean): Promise<SiteSettings> {
+    if (!supabase) throw new Error("Connect Supabase before changing site settings.");
+    const { data, error } = await supabase
+      .from("site_settings")
+      .update({ wallpaper_disabled: disabled })
+      .eq("id", true)
+      .select(SETTINGS_COLUMNS)
       .single();
     if (error) throw error;
     return fromRow(data);
@@ -118,7 +137,7 @@ export const siteSettingsRepository = {
       .from("site_settings")
       .update({ landing_theme_event_id: eventId, landing_theme_event_until: until })
       .eq("id", true)
-      .select("wallpaper_url, wallpaper_updated_at, landing_theme_event_id, landing_theme_event_until")
+      .select(SETTINGS_COLUMNS)
       .single();
     if (error) throw error;
     return fromRow(data);
@@ -130,7 +149,7 @@ export const siteSettingsRepository = {
       .from("site_settings")
       .update({ landing_theme_event_id: null, landing_theme_event_until: null })
       .eq("id", true)
-      .select("wallpaper_url, wallpaper_updated_at, landing_theme_event_id, landing_theme_event_until")
+      .select(SETTINGS_COLUMNS)
       .single();
     if (error) throw error;
     return fromRow(data);
