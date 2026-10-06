@@ -30,6 +30,7 @@ const NO_INDEX_PATHS = new Set([
   "/organiser/dashboard",
   "/my-tickets",
   "/account",
+  "/profile",
   "/admin/moderation",
 ]);
 

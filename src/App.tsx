@@ -14,6 +14,7 @@ import { OrganiserEventFormPage } from "./pages/OrganiserEventFormPage";
 import { OrganiserCheckinPage } from "./pages/OrganiserCheckinPage";
 import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { AccountSettingsPage } from "./pages/AccountSettingsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { AdminModerationPage } from "./pages/AdminModerationPage";
 import { RequireAuth, RequireOrganiser, RequirePlatformStaff } from "./components/auth/RouteGuards";
 import { RouteSeo } from "./components/seo/RouteSeo";
@@ -69,6 +70,14 @@ export default function App() {
           element={
             <RequireAuth>
               <AccountSettingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="profile"
+          element={
+            <RequireAuth>
+              <ProfilePage />
             </RequireAuth>
           }
         />

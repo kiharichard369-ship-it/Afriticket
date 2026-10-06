@@ -12,6 +12,7 @@ interface MobileMenuProps {
 
 export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
   const { user, signOut } = useAuth();
+  const loggedIn = Boolean(user && !user.is_anonymous); // guests have an anonymous session
   const { membership } = useOrganisation();
   const { isStaff } = usePlatformStaff();
 
@@ -53,7 +54,7 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
             Moderation (Super User)
           </NavLink>
         )}
-        {user && (
+        {loggedIn && (
           <NavLink
             to="/my-tickets"
             onClick={() => onOpenChange(false)}
@@ -62,7 +63,16 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
             My tickets
           </NavLink>
         )}
-        {user && (
+        {loggedIn && (
+          <NavLink
+            to="/profile"
+            onClick={() => onOpenChange(false)}
+            className="rounded-lg px-3 py-3 text-base font-medium text-ink hover:bg-ink/5 dark:text-ink-dark dark:hover:bg-white/10"
+          >
+            Profile and password
+          </NavLink>
+        )}
+        {loggedIn && (
           <NavLink
             to="/account"
             onClick={() => onOpenChange(false)}
@@ -78,7 +88,7 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
         >
           Sell tickets
         </NavLink>
-        {user ? (
+        {loggedIn ? (
           <button
             onClick={() => {
               signOut();

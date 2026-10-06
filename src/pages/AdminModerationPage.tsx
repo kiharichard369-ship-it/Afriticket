@@ -331,8 +331,14 @@ export function AdminModerationPage() {
     }
   }
 
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
   useEffect(() => {
     refresh();
+    // The header bell announces new items so these queues update without a reload.
+    const onNewNotification = () => void refreshRef.current();
+    window.addEventListener("afriticket:staff-notification", onNewNotification);
+    return () => window.removeEventListener("afriticket:staff-notification", onNewNotification);
   }, []);
 
   async function approveApplication(id: string) {
@@ -659,7 +665,7 @@ export function AdminModerationPage() {
         </div>
       </Card>
 
-      <section className="mt-8">
+      <section id="organiser-applications" className="mt-8 scroll-mt-6">
         <h2 className="font-display text-xl text-ink dark:text-ink-dark">Organiser applications</h2>
         <div className="mt-3 space-y-3">
           {applications === null ? (
@@ -683,7 +689,7 @@ export function AdminModerationPage() {
         </div>
       </section>
 
-      <section className="mt-10">
+      <section id="events-awaiting-review" className="mt-10 scroll-mt-6">
         <h2 className="font-display text-xl text-ink dark:text-ink-dark">Events awaiting review</h2>
         <div className="mt-3 space-y-3">
           {events === null ? (

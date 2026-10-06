@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { LayoutDashboard, LogOut, Menu, Moon, Search, ShieldCheck, Sun, Ticket } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Moon, Search, ShieldCheck, Sun, Ticket, User } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../context/AuthContext";
 import { useOrganisation } from "../../hooks/useOrganisation";
 import { usePlatformStaff } from "../../hooks/usePlatformStaff";
 import { buttonVariants } from "../ui/Button";
 import { MobileMenu } from "./MobileMenu";
+import { NotificationBell } from "../admin/NotificationBell";
 
 const NAV_LINKS = [
   { to: "/", label: "Events" },
@@ -16,6 +17,8 @@ const NAV_LINKS = [
 export function Header() {
   const { theme, toggle } = useTheme();
   const { user, signOut } = useAuth();
+  // Guest checkout creates an anonymous session: that is not a logged-in account.
+  const loggedIn = Boolean(user && !user.is_anonymous);
   const { membership } = useOrganisation();
   const { isStaff } = usePlatformStaff();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +64,7 @@ export function Header() {
           <Link to="/organiser/apply" className={buttonVariants({ variant: "outline", size: "sm", className: "hidden sm:inline-flex" })}>
             Sell tickets
           </Link>
-          {user && (
+          {loggedIn && (
             <Link
               to="/my-tickets"
               aria-label="My tickets"
@@ -89,7 +92,18 @@ export function Header() {
               <ShieldCheck className="h-5 w-5" />
             </Link>
           )}
-          {user ? (
+          {loggedIn && (
+            <Link
+              to="/profile"
+              aria-label="Profile and password"
+              title="Profile"
+              className="hidden rounded-md p-2 text-ink-soft hover:bg-ink/5 dark:text-ink-soft-dark dark:hover:bg-white/10 sm:inline-flex"
+            >
+              <User className="h-5 w-5" />
+            </Link>
+          )}
+          {isStaff && <NotificationBell moderationPath="/admin/moderation" />}
+          {loggedIn ? (
             <button
               onClick={() => signOut()}
               aria-label="Log out"
