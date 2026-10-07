@@ -226,7 +226,7 @@ export function NotificationBell({
             ) : (
               <ul className="space-y-1">
                 {items.map((item) => {
-                  const Icon = item.kind === "event_review" ? CalendarCheck : UserPlus;
+                  const Icon = item.kind === "organiser_application" ? UserPlus : CalendarCheck;
                   return (
                     <li key={item.id}>
                       <button

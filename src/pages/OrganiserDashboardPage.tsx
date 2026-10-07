@@ -90,9 +90,14 @@ export function OrganiserDashboardPage() {
                 <Link to={`/organiser/events/${event.id}`}>
                   <Button variant="outline" size="sm">Edit</Button>
                 </Link>
-                {(event.status === "published" || event.status === "paused") && (
+                {(event.status === "published" || event.status === "paused" || event.status === "sold_out") && (
                   <Link to={`/organiser/events/${event.id}/checkin`}>
                     <Button variant="outline" size="sm">Check-in</Button>
+                  </Link>
+                )}
+                {event.status !== "draft" && event.status !== "pending_review" && (
+                  <Link to={`/organiser/events/${event.id}/attendees`}>
+                    <Button variant="outline" size="sm">Attendees</Button>
                   </Link>
                 )}
                 {event.status === "draft" && (

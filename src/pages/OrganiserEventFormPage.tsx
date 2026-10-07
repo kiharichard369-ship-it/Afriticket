@@ -34,6 +34,8 @@ export function OrganiserEventFormPage() {
   const [categoryId, setCategoryId] = useState("");
   const [venueId, setVenueId] = useState("");
   const [description, setDescription] = useState("");
+  const [hostedBy, setHostedBy] = useState("");
+  const [directions, setDirections] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
@@ -67,6 +69,8 @@ export function OrganiserEventFormPage() {
       setCategoryId(event.category_id);
       setVenueId(event.venue_id);
       setDescription(event.description ?? "");
+      setHostedBy(event.hosted_by ?? "");
+      setDirections(event.directions ?? "");
       setCoverImageUrl(event.cover_image_url ?? null);
       setStartsAt(event.starts_at?.slice(0, 16) ?? "");
       setEndsAt(event.ends_at?.slice(0, 16) ?? "");
@@ -162,6 +166,9 @@ export function OrganiserEventFormPage() {
       starts_at: new Date(startsAt).toISOString(),
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
       is_free: isFree,
+      // Blank means "use the default" (organisation name / venue address only).
+      hosted_by: hostedBy.trim() || null,
+      directions: directions.trim() || null,
     };
 
     let currentEventId = eventId;
@@ -222,6 +229,9 @@ export function OrganiserEventFormPage() {
     navigate("/organiser/dashboard");
   }
 
+  const defaultHost = membership?.organisation?.name ?? "your organisation";
+  const selectedVenueAddress = (addingVenue ? newVenue.address : venues.find((v) => v.id === venueId)?.address ?? "")?.trim() ?? "";
+
   if (loading) return <div className="mx-auto max-w-3xl px-6 py-16 text-ink-soft dark:text-ink-soft-dark">Loading…</div>;
 
   return (
@@ -238,6 +248,21 @@ export function OrganiserEventFormPage() {
         <div>
           <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Title</label>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+        </div>
+
+        <div>
+          <label htmlFor="event-hosted-by" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Hosted by (optional)</label>
+          <Input
+            id="event-hosted-by"
+            value={hostedBy}
+            maxLength={120}
+            onChange={(e) => setHostedBy(e.target.value)}
+            placeholder={defaultHost}
+          />
+          <p className="mt-1 text-xs text-ink-faint">
+            Shown as: Hosted by {hostedBy.trim() || defaultHost}. Leave it blank to use {defaultHost}.
+            {!isNew && status !== "draft" && " Changing the host name on a live event is flagged to Afriticket staff."}
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -271,6 +296,21 @@ export function OrganiserEventFormPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="event-directions" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Directions (optional)</label>
+          <Input
+            id="event-directions"
+            value={directions}
+            maxLength={300}
+            onChange={(e) => setDirections(e.target.value)}
+            placeholder="e.g. Opposite the main gate, 200 m past the Shell petrol station"
+          />
+          <p className="mt-1 text-xs text-ink-faint">
+            Extra help for finding the place.
+            {selectedVenueAddress ? ` Shown after the venue address (${selectedVenueAddress}).` : " Shown under the venue name."}
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
