@@ -21,11 +21,13 @@ import { AdminModerationPage } from "./pages/AdminModerationPage";
 import { RequireAuth, RequireOrganiser } from "./components/auth/RouteGuards";
 import { RequirePlatformRole } from "./components/auth/RequirePlatformRole";
 import { RouteSeo } from "./components/seo/RouteSeo";
+import { IdleLogout } from "./components/auth/IdleLogout";
 
 export default function App() {
   return (
     <>
       <RouteSeo />
+      <IdleLogout />
       <Routes>
         <Route element={<Layout />}>
         <Route index element={<DiscoveryPage />} />

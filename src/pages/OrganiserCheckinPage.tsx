@@ -84,6 +84,14 @@ export function OrganiserCheckinPage() {
     inputRef.current?.focus();
   }, []);
 
+  // Door staff scanning with the camera never touch the keyboard or mouse, so while the
+  // camera is on, keep the idle-logout timer from signing them out mid-shift.
+  useEffect(() => {
+    if (scannerState !== "active") return undefined;
+    const timer = window.setInterval(() => window.dispatchEvent(new Event("afriticket:activity")), 30_000);
+    return () => window.clearInterval(timer);
+  }, [scannerState]);
+
   const checkInCode = useCallback(
     async (rawCode: string, fromScanner = false) => {
       const trimmedCode = rawCode.trim();
@@ -118,6 +126,7 @@ export function OrganiserCheckinPage() {
       busyRef.current = true;
       setBusy(true);
       setError(null);
+      window.dispatchEvent(new Event("afriticket:activity")); // a scan is activity
 
       try {
         const { data, error: rpcError } = await supabase.rpc("check_in_ticket", {
