@@ -12,11 +12,14 @@ import { OrganiserApplyPage } from "./pages/OrganiserApplyPage";
 import { OrganiserDashboardPage } from "./pages/OrganiserDashboardPage";
 import { OrganiserEventFormPage } from "./pages/OrganiserEventFormPage";
 import { OrganiserCheckinPage } from "./pages/OrganiserCheckinPage";
+import { OrganiserAttendeesPage } from "./pages/OrganiserAttendeesPage";
+import { SupportCheckinPage } from "./pages/SupportCheckinPage";
 import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { AccountSettingsPage } from "./pages/AccountSettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { AdminModerationPage } from "./pages/AdminModerationPage";
-import { RequireAuth, RequireOrganiser, RequirePlatformStaff } from "./components/auth/RouteGuards";
+import { RequireAuth, RequireOrganiser } from "./components/auth/RouteGuards";
+import { RequirePlatformRole } from "./components/auth/RequirePlatformRole";
 import { RouteSeo } from "./components/seo/RouteSeo";
 
 export default function App() {
@@ -58,6 +61,14 @@ export default function App() {
           }
         />
         <Route
+          path="organiser/events/:eventId/attendees"
+          element={
+            <RequireOrganiser>
+              <OrganiserAttendeesPage />
+            </RequireOrganiser>
+          }
+        />
+        <Route
           path="my-tickets"
           element={
             <RequireAuth>
@@ -84,9 +95,31 @@ export default function App() {
         <Route
           path="admin/moderation"
           element={
-            <RequirePlatformStaff>
-              <AdminModerationPage />
-            </RequirePlatformStaff>
+            <RequireAuth>
+              <RequirePlatformRole allow={["admin"]}>
+                <AdminModerationPage />
+              </RequirePlatformRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="staff/checkin"
+          element={
+            <RequireAuth>
+              <RequirePlatformRole allow={["support", "admin"]}>
+                <SupportCheckinPage />
+              </RequirePlatformRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="staff/events/:eventId/checkin"
+          element={
+            <RequireAuth>
+              <RequirePlatformRole allow={["support", "admin"]}>
+                <OrganiserCheckinPage />
+              </RequirePlatformRole>
+            </RequireAuth>
           }
         />
         <Route path="*" element={<NotFoundPage />} />

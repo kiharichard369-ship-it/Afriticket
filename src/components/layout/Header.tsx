@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { LayoutDashboard, LogOut, Menu, Moon, Search, ShieldCheck, Sun, Ticket, User } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Moon, ScanLine, Search, ShieldCheck, Sun, Ticket, User } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../context/AuthContext";
 import { useOrganisation } from "../../hooks/useOrganisation";
-import { usePlatformStaff } from "../../hooks/usePlatformStaff";
+import { usePlatformRole } from "../../hooks/usePlatformRole";
 import { buttonVariants } from "../ui/Button";
 import { MobileMenu } from "./MobileMenu";
 import { NotificationBell } from "../admin/NotificationBell";
@@ -20,7 +20,9 @@ export function Header() {
   // Guest checkout creates an anonymous session: that is not a logged-in account.
   const loggedIn = Boolean(user && !user.is_anonymous);
   const { membership } = useOrganisation();
-  const { isStaff } = usePlatformStaff();
+  const { role: platformRole } = usePlatformRole();
+  const isAdmin = platformRole === "admin";
+  const canCheckIn = platformRole === "support" || platformRole === "admin";
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -82,7 +84,7 @@ export function Header() {
               <LayoutDashboard className="h-5 w-5" />
             </Link>
           )}
-          {isStaff && (
+          {isAdmin && (
             <Link
               to="/admin/moderation"
               aria-label="Moderation (Super User)"
@@ -90,6 +92,16 @@ export function Header() {
               className="hidden rounded-md p-2 text-ink-soft hover:bg-ink/5 dark:text-ink-soft-dark dark:hover:bg-white/10 sm:inline-flex"
             >
               <ShieldCheck className="h-5 w-5" />
+            </Link>
+          )}
+          {canCheckIn && (
+            <Link
+              to="/staff/checkin"
+              aria-label="Event check-in"
+              title="Event check-in"
+              className="hidden rounded-md p-2 text-ink-soft hover:bg-ink/5 dark:text-ink-soft-dark dark:hover:bg-white/10 sm:inline-flex"
+            >
+              <ScanLine className="h-5 w-5" />
             </Link>
           )}
           {loggedIn && (
@@ -102,7 +114,7 @@ export function Header() {
               <User className="h-5 w-5" />
             </Link>
           )}
-          {isStaff && <NotificationBell moderationPath="/admin/moderation" />}
+          {isAdmin && <NotificationBell moderationPath="/admin/moderation" />}
           {loggedIn ? (
             <button
               onClick={() => signOut()}

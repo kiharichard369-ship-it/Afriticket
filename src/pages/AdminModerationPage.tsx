@@ -522,8 +522,8 @@ export function AdminModerationPage() {
           <div className="sm:w-44">
             <label htmlFor="staff-role" className="mb-1 block text-xs text-ink-soft dark:text-ink-soft-dark">Role</label>
             <Select id="staff-role" value={staffRole} onChange={(event) => setStaffRole(event.target.value as PlatformRole)}>
-              <option value="support">Support</option>
-              <option value="moderator">Moderator</option>
+              <option value="support">Support (check-in only)</option>
+              <option value="moderator">Moderator (event planner)</option>
               <option value="admin">Administrator</option>
             </Select>
           </div>
@@ -586,8 +586,8 @@ export function AdminModerationPage() {
                     className="h-9 min-w-36 text-sm"
                     onChange={(event) => setUserRoleDrafts((current) => ({ ...current, [account.user_id]: event.target.value as PlatformRole }))}
                   >
-                    <option value="support">Support</option>
-                    <option value="moderator">Moderator</option>
+                    <option value="support">Support (check-in only)</option>
+                    <option value="moderator">Moderator (event planner)</option>
                     <option value="admin">Administrator</option>
                   </Select>
                   <Button size="sm" disabled={isDeleted || busyId === `user-role-${account.user_id}`} onClick={() => void assignRoleToUser(account)}>

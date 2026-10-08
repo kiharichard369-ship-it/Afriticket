@@ -210,8 +210,8 @@ export function AdminUsersPage() {
             />
             <Select aria-label="Role to give" value={newRole} onChange={(e) => setNewRole(e.target.value as PlatformRole)}>
               <option value="admin">Admin</option>
-              <option value="moderator">Moderator</option>
-              <option value="support">Support (view only)</option>
+              <option value="moderator">Moderator (event planner)</option>
+              <option value="support">Support (check-in only)</option>
             </Select>
             <Button disabled={granting || !newEmail.trim()} onClick={grantByEmail}>
               {granting ? "Saving…" : "Give role"}
@@ -288,8 +288,8 @@ export function AdminUsersPage() {
                         onChange={(e) => void changeRole(row, e.target.value as PlatformRole | "none")}
                       >
                         <option value="none">No staff role</option>
-                        <option value="support">Support (view only)</option>
-                        <option value="moderator">Moderator</option>
+                        <option value="support">Support (check-in only)</option>
+                        <option value="moderator">Moderator (event planner)</option>
                         <option value="admin">Admin</option>
                       </Select>
                     ) : row.platform_role ? (

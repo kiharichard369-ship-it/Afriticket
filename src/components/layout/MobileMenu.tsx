@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { Dialog } from "../ui/Dialog";
 import { useAuth } from "../../context/AuthContext";
 import { useOrganisation } from "../../hooks/useOrganisation";
-import { usePlatformStaff } from "../../hooks/usePlatformStaff";
+import { usePlatformRole } from "../../hooks/usePlatformRole";
 
 interface MobileMenuProps {
   open: boolean;
@@ -14,7 +14,9 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
   const { user, signOut } = useAuth();
   const loggedIn = Boolean(user && !user.is_anonymous); // guests have an anonymous session
   const { membership } = useOrganisation();
-  const { isStaff } = usePlatformStaff();
+  const { role: platformRole } = usePlatformRole();
+  const isAdmin = platformRole === "admin";
+  const canCheckIn = platformRole === "support" || platformRole === "admin";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Menu" side="right">
@@ -45,7 +47,16 @@ export function MobileMenu({ open, onOpenChange, links }: MobileMenuProps) {
             Organiser dashboard
           </NavLink>
         )}
-        {isStaff && (
+        {canCheckIn && (
+          <NavLink
+            to="/staff/checkin"
+            onClick={() => onOpenChange(false)}
+            className="rounded-lg px-3 py-3 text-base font-medium text-ink hover:bg-ink/5 dark:text-ink-dark dark:hover:bg-white/10"
+          >
+            Event check-in
+          </NavLink>
+        )}
+        {isAdmin && (
           <NavLink
             to="/admin/moderation"
             onClick={() => onOpenChange(false)}

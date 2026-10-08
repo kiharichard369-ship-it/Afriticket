@@ -62,7 +62,7 @@ export function NotificationBell({
   openRef.current = open;
   onNewRef.current = onNew;
 
-  // Admins and moderators get a bell. (The database decides what each one receives.)
+  // Only admins get a bell. (The database decides what each person may read.)
   useEffect(() => {
     if (!supabase || !user || user.is_anonymous) {
       setCanSee(false);
@@ -75,7 +75,7 @@ export function NotificationBell({
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled) setCanSee(data?.role === "admin" || data?.role === "moderator");
+        if (!cancelled) setCanSee(data?.role === "admin");
       });
     return () => {
       cancelled = true;
