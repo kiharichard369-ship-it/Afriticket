@@ -7,7 +7,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
-import { formatEventDate } from "../lib/date";
+import { formatEventDate, formatEventTime } from "../lib/date";
 import type { EventRow } from "../types/database";
 
 const STATUS_TONE: Record<string, "saffron" | "sage" | "rust" | "neutral"> = {
@@ -25,6 +25,8 @@ export function OrganiserDashboardPage() {
   const { membership } = useOrganisation();
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Events the admins have scheduled for removal, keyed by event id.
+  const [cleanups, setCleanups] = useState<Record<string, { status: string; due_at: string; appeal_reason: string | null; decision_note: string | null }>>({});
 
   async function refresh() {
     if (!supabase || !membership) return;
@@ -32,8 +34,16 @@ export function OrganiserDashboardPage() {
       .from("events")
       .select("*")
       .eq("organisation_id", membership.organisation_id)
+      .neq("status", "archived") // removed events no longer show here
       .order("created_at", { ascending: false });
     setEvents((data as EventRow[]) ?? []);
+
+    const { data: cleanupRows } = await supabase.rpc("organisation_event_cleanups");
+    const map: Record<string, { status: string; due_at: string; appeal_reason: string | null; decision_note: string | null }> = {};
+    for (const row of (cleanupRows ?? []) as Array<{ event_id: string; status: string; due_at: string; appeal_reason: string | null; decision_note: string | null }>) {
+      map[row.event_id] = row;
+    }
+    setCleanups(map);
   }
 
   useEffect(() => {
@@ -45,6 +55,17 @@ export function OrganiserDashboardPage() {
     if (!supabase) return;
     setBusyId(eventId);
     const { error } = await supabase.from("events").update({ status }).eq("id", eventId);
+    setBusyId(null);
+    if (error) alert(error.message);
+    else refresh();
+  }
+
+  async function appealRemoval(eventId: string) {
+    if (!supabase) return;
+    const reason = window.prompt("Why should this event be kept? Please explain (at least 10 characters):");
+    if (!reason) return;
+    setBusyId(eventId);
+    const { error } = await supabase.rpc("appeal_event_cleanup", { p_event_id: eventId, p_reason: reason });
     setBusyId(null);
     if (error) alert(error.message);
     else refresh();
@@ -126,6 +147,25 @@ export function OrganiserDashboardPage() {
                   </Button>
                 )}
               </div>
+              {cleanups[event.id] && (
+                <div className="w-full rounded-lg border border-rust/30 bg-rust/5 p-3 text-sm text-ink dark:text-ink-dark">
+                  {cleanups[event.id].status === "appealed" ? (
+                    <p>Appeal received. Removal is on hold while an admin reviews it.</p>
+                  ) : (
+                    <>
+                      <p>
+                        This event is scheduled for removal on{" "}
+                        <strong>{formatEventDate(cleanups[event.id].due_at)}, {formatEventTime(cleanups[event.id].due_at)}</strong>.
+                        Download your attendee list and sales data before then (Attendees, then Export CSV), or appeal if this is a mistake.
+                      </p>
+                      {cleanups[event.id].decision_note && <p className="mt-1 text-xs text-ink-soft dark:text-ink-soft-dark">Note from Afriticket: {cleanups[event.id].decision_note}</p>}
+                      <Button variant="outline" size="sm" className="mt-2" disabled={busyId === event.id} onClick={() => appealRemoval(event.id)}>
+                        Appeal
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </Card>
           ))
         )}

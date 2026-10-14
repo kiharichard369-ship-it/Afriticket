@@ -114,7 +114,7 @@ export function Header() {
               <User className="h-5 w-5" />
             </Link>
           )}
-          {isAdmin && <NotificationBell moderationPath="/admin/moderation" />}
+          {loggedIn && <NotificationBell moderationPath="/admin/moderation" />}
           {loggedIn ? (
             <button
               onClick={() => signOut()}

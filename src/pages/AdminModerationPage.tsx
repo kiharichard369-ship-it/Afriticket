@@ -11,6 +11,7 @@ import { formatEventDate } from "../lib/date";
 import { formatKes } from "../lib/currency";
 import type { CategoryRow, EventRow, OrganiserApplicationRow } from "../types/database";
 import { siteSettingsRepository, type ThemeEvent } from "../repositories/siteSettingsRepository";
+import { AdminEventCleanup } from "../components/admin/AdminEventCleanup";
 
 interface RefundRow {
   id: string;
@@ -688,6 +689,8 @@ export function AdminModerationPage() {
           )}
         </div>
       </section>
+
+      <AdminEventCleanup />
 
       <section id="events-awaiting-review" className="mt-10 scroll-mt-6">
         <h2 className="font-display text-xl text-ink dark:text-ink-dark">Events awaiting review</h2>

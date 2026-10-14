@@ -3,17 +3,24 @@
 // Shows its children only to people holding one of the listed platform roles.
 // Use it INSIDE RequireAuth, which handles "not logged in". The database still
 // enforces every action; this just keeps the wrong screens from opening.
+//
+// Someone who ends up on a page that isn't theirs (for example right after logging in)
+// is sent to their own landing page instead of a dead end. Only people with nowhere
+// else to go see "No access".
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { usePlatformRole, type PlatformRole } from "../../hooks/usePlatformRole";
+import { useLandingPath } from "../../hooks/useLandingPath";
 
 export function RequirePlatformRole({ allow, children }: { allow: PlatformRole[]; children: ReactNode }) {
   const { role, loading } = usePlatformRole();
+  const { path: home, loading: homeLoading } = useLandingPath();
 
-  if (loading) {
+  if (loading || homeLoading) {
     return <p className="mx-auto max-w-3xl px-6 py-16 text-ink-soft dark:text-ink-soft-dark">Checking access…</p>;
   }
   if (!role || !allow.includes(role)) {
+    if (home !== "/") return <Navigate to={home} replace />;
     return (
       <div className="mx-auto max-w-lg px-6 py-16 text-center">
         <h1 className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">No access</h1>
