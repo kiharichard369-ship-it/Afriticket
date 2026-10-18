@@ -27,6 +27,8 @@ const PUBLIC_METADATA: Record<string, { title: string; description: string }> = 
 const NO_INDEX_PATHS = new Set([
   "/login",
   "/signup",
+  "/forgot-password",
+  "/reset-password",
   "/organiser/dashboard",
   "/my-tickets",
   "/account",

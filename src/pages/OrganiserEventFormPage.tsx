@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
@@ -7,6 +7,7 @@ import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { DateTimePicker } from "../components/ui/DateTimePicker";
 import type { CategoryRow, TicketTypeRow, VenueRow } from "../types/database";
 
 interface TicketDraft {
@@ -18,6 +19,67 @@ interface TicketDraft {
 }
 
 const emptyTicket: TicketDraft = { name: "", priceKes: "", capacity: "", perOrderLimit: "6" };
+
+// Everything the organiser can type into this form (used to keep unsaved work safe).
+interface FormValues {
+  title: string;
+  categoryId: string;
+  venueId: string;
+  description: string;
+  hostedBy: string;
+  directions: string;
+  startsAt: string;
+  endsAt: string;
+  isFree: boolean;
+  tickets: TicketDraft[];
+  addingVenue: boolean;
+  newVenue: { name: string; town: string; address: string };
+}
+
+const EMPTY_VALUES: FormValues = {
+  title: "", categoryId: "", venueId: "", description: "", hostedBy: "", directions: "",
+  startsAt: "", endsAt: "", isFree: false, tickets: [emptyTicket], addingVenue: false,
+  newVenue: { name: "", town: "", address: "" },
+};
+
+const draftKey = (eventId: string) => `afriticket.eventDraft.${eventId}`;
+
+function readDraft(key: string): { savedAt: number; values: FormValues } | null {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.savedAt === "number" && parsed.values) return parsed;
+  } catch {
+    /* ignore a missing or corrupt draft */
+  }
+  return null;
+}
+
+function writeDraft(key: string, values: FormValues) {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), values }));
+  } catch {
+    /* storage can be unavailable */
+  }
+}
+
+function clearDraft(key: string) {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+// The database stores UTC; the form needs the organiser's local clock time ("2026-10-11T08:00").
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 export function OrganiserEventFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -50,14 +112,58 @@ export function OrganiserEventFormPage() {
   const [saving, setSaving] = useState<"draft" | "review" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Unsaved work is kept in this tab's storage, so switching tabs, a browser that discards
+  // inactive tabs, or a reload doesn't lose a half-filled form.
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const baselineRef = useRef<FormValues>(EMPTY_VALUES);
+  const draftId = isNew ? "new" : id!;
+  const values: FormValues = { title, categoryId, venueId, description, hostedBy, directions, startsAt, endsAt, isFree, tickets, addingVenue, newVenue };
+  const valuesJson = JSON.stringify(values);
+
+  function applyValues(v: FormValues) {
+    setTitle(v.title);
+    setCategoryId(v.categoryId);
+    setVenueId(v.venueId);
+    setDescription(v.description);
+    setHostedBy(v.hostedBy);
+    setDirections(v.directions);
+    setStartsAt(v.startsAt);
+    setEndsAt(v.endsAt);
+    setIsFree(v.isFree);
+    setTickets(v.tickets.length ? v.tickets : [emptyTicket]);
+    setAddingVenue(v.addingVenue);
+    setNewVenue(v.newVenue);
+  }
+
+  function discardDraft() {
+    clearDraft(draftKey(draftId));
+    applyValues(baselineRef.current);
+    setDraftRestored(false);
+  }
+
   useEffect(() => {
     if (!supabase) return;
     supabase.from("categories").select("*").order("sort_order").then(({ data }) => setCategories((data as CategoryRow[]) ?? []));
     supabase.from("venues").select("*").order("town").then(({ data }) => setVenues((data as VenueRow[]) ?? []));
   }, []);
 
+  // A new event: bring back anything typed earlier and not yet saved.
+  useEffect(() => {
+    if (!isNew) return;
+    baselineRef.current = EMPTY_VALUES;
+    const draft = readDraft(draftKey("new"));
+    if (draft) {
+      applyValues(draft.values);
+      setDraftRestored(true);
+    }
+    setDraftReady(true);
+  }, [isNew]);
+
+  // An existing event: load it, then lay any newer unsaved edits on top.
   useEffect(() => {
     if (isNew || !supabase) return;
+    setDraftReady(false);
     (async () => {
       const { data: event, error } = await supabase!.from("events").select("*").eq("id", id).maybeSingle();
       if (error || !event) {
@@ -65,23 +171,19 @@ export function OrganiserEventFormPage() {
         setLoading(false);
         return;
       }
-      setTitle(event.title);
-      setCategoryId(event.category_id);
-      setVenueId(event.venue_id);
-      setDescription(event.description ?? "");
-      setHostedBy(event.hosted_by ?? "");
-      setDirections(event.directions ?? "");
-      setCoverImageUrl(event.cover_image_url ?? null);
-      setStartsAt(event.starts_at?.slice(0, 16) ?? "");
-      setEndsAt(event.ends_at?.slice(0, 16) ?? "");
-      setIsFree(event.is_free);
-      setStatus(event.status);
-      setEventId(event.id);
-
       const { data: ticketRows } = await supabase!.from("ticket_types").select("*").eq("event_id", id);
       const rows = (ticketRows as TicketTypeRow[]) ?? [];
-      setTickets(
-        rows.length
+      const dbValues: FormValues = {
+        title: event.title,
+        categoryId: event.category_id,
+        venueId: event.venue_id,
+        description: event.description ?? "",
+        hostedBy: event.hosted_by ?? "",
+        directions: event.directions ?? "",
+        startsAt: toLocalInput(event.starts_at),
+        endsAt: toLocalInput(event.ends_at),
+        isFree: event.is_free,
+        tickets: rows.length
           ? rows.map((t) => ({
               id: t.id,
               name: t.name,
@@ -89,11 +191,38 @@ export function OrganiserEventFormPage() {
               capacity: String(t.capacity),
               perOrderLimit: String(t.per_order_limit),
             }))
-          : [emptyTicket]
-      );
+          : [emptyTicket],
+        addingVenue: false,
+        newVenue: { name: "", town: "", address: "" },
+      };
+      baselineRef.current = dbValues;
+      applyValues(dbValues);
+      setCoverImageUrl(event.cover_image_url ?? null);
+      setStatus(event.status);
+      setEventId(event.id);
+
+      const draft = readDraft(draftKey(id!));
+      const updatedAt = event.updated_at ? Date.parse(event.updated_at) : 0;
+      if (draft && draft.savedAt > updatedAt && JSON.stringify(draft.values) !== JSON.stringify(dbValues)) {
+        applyValues(draft.values);
+        setDraftRestored(true);
+      }
       setLoading(false);
+      setDraftReady(true);
     })();
   }, [id, isNew]);
+
+  // Keep a copy of unsaved edits (not the chosen image file, which a browser can't store).
+  useEffect(() => {
+    if (!draftReady) return;
+    const key = draftKey(draftId);
+    const timer = window.setTimeout(() => {
+      if (valuesJson === JSON.stringify(baselineRef.current)) clearDraft(key);
+      else writeDraft(key, JSON.parse(valuesJson));
+    }, 400);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftReady, valuesJson]);
 
   function updateTicket(index: number, patch: Partial<TicketDraft>) {
     setTickets((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
@@ -153,6 +282,11 @@ export function OrganiserEventFormPage() {
     const finalVenueId = await ensureVenue();
     if (!finalVenueId || !categoryId || !title || !startsAt) {
       setError("Title, category, venue, and start time are required.");
+      setSaving(null);
+      return;
+    }
+    if (endsAt && new Date(endsAt) <= new Date(startsAt)) {
+      setError("The end time must be after the start time.");
       setSaving(null);
       return;
     }
@@ -226,6 +360,8 @@ export function OrganiserEventFormPage() {
     }
 
     setSaving(null);
+    setDraftReady(false); // stop the auto-copy, then forget it: the event is saved
+    clearDraft(draftKey(draftId));
     navigate("/organiser/dashboard");
   }
 
@@ -237,6 +373,12 @@ export function OrganiserEventFormPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">{isNew ? "New event" : "Edit event"}</h1>
+      {draftRestored && (
+        <div role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-saffron/40 bg-saffron/10 p-3 text-sm text-ink dark:text-ink-dark">
+          <span>We restored your unsaved changes. If you had chosen a new image, please choose it again.</span>
+          <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>Discard and start over</Button>
+        </div>
+      )}
       {status !== "draft" && !isNew && (
         <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">
           Status: <strong className="capitalize">{status.replace("_", " ")}</strong>. Saving here updates the details;
@@ -315,27 +457,12 @@ export function OrganiserEventFormPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Starts at</label>
-            <Input
-              type="datetime-local"
-              value={startsAt}
-              onChange={(e) => {
-                setStartsAt(e.target.value);
-                e.currentTarget.blur();
-              }}
-              required
-            />
+            <label htmlFor="event-starts-at" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Starts at</label>
+            <DateTimePicker id="event-starts-at" value={startsAt} onChange={setStartsAt} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Ends at (optional)</label>
-            <Input
-              type="datetime-local"
-              value={endsAt}
-              onChange={(e) => {
-                setEndsAt(e.target.value);
-                e.currentTarget.blur();
-              }}
-            />
+            <label htmlFor="event-ends-at" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Ends at (optional)</label>
+            <DateTimePicker id="event-ends-at" value={endsAt} onChange={setEndsAt} optional defaultDate={startsAt.slice(0, 10)} minDate={startsAt.slice(0, 10)} />
           </div>
         </div>
 

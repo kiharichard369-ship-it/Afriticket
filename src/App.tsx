@@ -8,6 +8,9 @@ import { HelpPage } from "./pages/HelpPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import "./lib/recoveryFlag"; // starts listening for password-reset links right away
 import { OrganiserApplyPage } from "./pages/OrganiserApplyPage";
 import { OrganiserDashboardPage } from "./pages/OrganiserDashboardPage";
 import { OrganiserEventFormPage } from "./pages/OrganiserEventFormPage";
@@ -37,6 +40,8 @@ export default function App() {
         <Route path="help" element={<HelpPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignUpPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="organiser/apply" element={<OrganiserApplyPage />} />
         <Route
           path="organiser/dashboard"

@@ -85,6 +85,15 @@ export function LoginPage() {
           <label htmlFor="password" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Password</label>
           <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
+           <div className="-mt-2 text-right">
+     <Link
+       to="/forgot-password"
+       state={{ email }}
+       className="text-sm font-medium text-saffron-text hover:underline dark:text-saffron"
+     >
+       Forgot password?
+     </Link>
+   </div>
         {error && <p role="alert" className="text-sm text-rust">{error}</p>}
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? "Logging in…" : "Log in"}
