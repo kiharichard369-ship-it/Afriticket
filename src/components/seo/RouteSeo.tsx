@@ -10,6 +10,10 @@ const PUBLIC_METADATA: Record<string, { title: string; description: string }> = 
     title: "Events calendar — Afriticket",
     description: "Browse upcoming events across Kenya by month and day, then open an event to view tickets and venue details.",
   },
+  "/programmes/miss-corporate-kenya": {
+    title: "Miss Corporate Kenya 2026 — Corporate participation | Afriticket",
+    description: "Explore Miss Corporate Kenya on Afriticket, review currently active corporate partnership packages, find approved partner recognition and discover tagged events.",
+  },
   "/about": {
     title: "About Afriticket — Kenya event discovery and ticketing",
     description: "Learn how Afriticket helps people find and book concerts, markets, sport, theatre, and community gatherings across Kenya.",
@@ -34,6 +38,8 @@ const NO_INDEX_PATHS = new Set([
   "/account",
   "/profile",
   "/admin/moderation",
+  "/admin/corporate-enquiries",
+  "/admin/mck",
 ]);
 
 export function RouteSeo() {

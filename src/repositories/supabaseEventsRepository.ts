@@ -32,6 +32,7 @@ function toSummary(row: EventPublicRow, ticketTypes: TicketTypePublicRow[]): Eve
     currency: "KES",
     ctaLabel: ctaFor(row, priceFromMinor),
     isFree: row.is_free,
+    programmeSlug: row.programme_slug,
   };
 }
 
@@ -51,6 +52,7 @@ export class SupabaseEventsRepository implements EventsRepository {
     let query = db.from("events_public").select(EVENT_PUBLIC_SELECT, { count: "exact" });
 
     if (filters.query) query = query.ilike("title", `%${filters.query}%`);
+    if (filters.programmeSlug) query = query.eq("programme_slug", filters.programmeSlug);
     if (filters.categorySlug) query = query.eq("category_slug", filters.categorySlug);
     if (filters.town) query = query.eq("venue_town", filters.town);
     if (filters.month) {

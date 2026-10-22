@@ -10,6 +10,7 @@ function filtersFromParams(params: URLSearchParams): EventFilters {
   const maxPrice = params.get("maxPrice");
   return {
     query: params.get("q") ?? undefined,
+    programmeSlug: params.get("programme") ?? undefined,
     categorySlug: params.get("category") ?? undefined,
     town: params.get("town") ?? undefined,
     month: params.get("month") ?? undefined,
@@ -65,6 +66,7 @@ export function useEventDiscovery() {
         else next.set(key, String(value));
       };
       if ("query" in patch) apply("q", patch.query);
+      if ("programmeSlug" in patch) apply("programme", patch.programmeSlug);
       if ("categorySlug" in patch) apply("category", patch.categorySlug);
       if ("town" in patch) apply("town", patch.town);
       if ("month" in patch) apply("month", patch.month);

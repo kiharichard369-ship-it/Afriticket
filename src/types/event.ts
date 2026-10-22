@@ -55,6 +55,8 @@ export interface EventSummary {
   currency: "KES";
   ctaLabel: "Get tickets" | "Reserve a spot" | "Donate" | "Sold out";
   isFree: boolean;
+  /** Optional association with an Afriticket programme such as MCK. */
+  programmeSlug?: string | null;
 }
 
 export interface EventDetail extends EventSummary {
@@ -68,6 +70,7 @@ export interface EventDetail extends EventSummary {
 
 export interface EventFilters {
   query?: string;
+  programmeSlug?: string;
   categorySlug?: string;
   town?: string;
   venueId?: string;

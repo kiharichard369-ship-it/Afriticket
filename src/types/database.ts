@@ -1,3 +1,4 @@
+// Location: src/types/database.ts
 // Minimal, hand-authored types matching /supabase/migrations. Once you run
 // `supabase login && supabase link` against your real project, replace this
 // file with the output of:
@@ -37,6 +38,7 @@ export interface EventRow {
   is_free: boolean;
   moderation_reason: string | null;
   published_at: string | null;
+  programme_slug: string | null;
   created_at: string;
   updated_at: string;
   category?: CategoryRow;
@@ -66,6 +68,8 @@ export interface EventPublicRow {
   venue_town: string;
   venue_address: string | null;
   organiser_name: string;
+  is_featured: boolean;
+  programme_slug: string | null;
 }
 
 export interface TicketTypePublicRow {
@@ -114,6 +118,73 @@ export interface OrganisationMemberRow {
 }
 
 export type ApplicationStatusRow = "pending" | "approved" | "rejected";
+export type CorporatePartnershipTypeRow = "cash" | "in_kind";
+export type CorporatePartnershipTierRow = string;
+export type CorporatePartnershipStatusRow = "new" | "in_progress" | "contacted" | "closed" | "spam";
+
+export interface CorporatePartnershipEnquiryRow {
+  id: string;
+  organisation_name: string;
+  contact_email: string;
+  partnership_type: CorporatePartnershipTypeRow;
+  tier_key: CorporatePartnershipTierRow | null;
+  tier_name_snapshot: string | null;
+  tier_price_snapshot: number | null;
+  message: string | null;
+  consent_to_contact: boolean;
+  status: CorporatePartnershipStatusRow;
+  admin_notes: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MckPartnershipTierRow {
+  tier_key: string;
+  name: string;
+  price_kes: number;
+  benefits: string[];
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type MckPartnerStatusRow = "active" | "completed" | "inactive";
+
+export interface MckCorporatePartnerRow {
+  id: string;
+  organisation_name: string;
+  public_name: string;
+  partnership_type: CorporatePartnershipTypeRow;
+  tier_key: string | null;
+  description: string | null;
+  status: MckPartnerStatusRow;
+  is_public: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MckPublicPartnerRow {
+  id: string;
+  public_name: string;
+  partnership_type: CorporatePartnershipTypeRow;
+  tier_key: string | null;
+  tier_name: string | null;
+  description: string | null;
+  sort_order: number;
+}
+
+export interface MckAdminEventRow {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  starts_at: string;
+  programme_slug: string | null;
+}
 
 export interface OrganiserApplicationRow {
   id: string;

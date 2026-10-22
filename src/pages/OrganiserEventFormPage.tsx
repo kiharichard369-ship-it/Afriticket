@@ -9,6 +9,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { DateTimePicker } from "../components/ui/DateTimePicker";
 import type { CategoryRow, TicketTypeRow, VenueRow } from "../types/database";
+import { MCK_PROGRAMME_SLUG } from "../data/mckPartnershipTiers";
 
 interface TicketDraft {
   id?: string;
@@ -24,6 +25,7 @@ const emptyTicket: TicketDraft = { name: "", priceKes: "", capacity: "", perOrde
 interface FormValues {
   title: string;
   categoryId: string;
+  programmeSlug: string;
   venueId: string;
   description: string;
   hostedBy: string;
@@ -37,7 +39,7 @@ interface FormValues {
 }
 
 const EMPTY_VALUES: FormValues = {
-  title: "", categoryId: "", venueId: "", description: "", hostedBy: "", directions: "",
+  title: "", categoryId: "", programmeSlug: "", venueId: "", description: "", hostedBy: "", directions: "",
   startsAt: "", endsAt: "", isFree: false, tickets: [emptyTicket], addingVenue: false,
   newVenue: { name: "", town: "", address: "" },
 };
@@ -94,6 +96,7 @@ export function OrganiserEventFormPage() {
 
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [programmeSlug, setProgrammeSlug] = useState("");
   const [venueId, setVenueId] = useState("");
   const [description, setDescription] = useState("");
   const [hostedBy, setHostedBy] = useState("");
@@ -118,12 +121,13 @@ export function OrganiserEventFormPage() {
   const [draftRestored, setDraftRestored] = useState(false);
   const baselineRef = useRef<FormValues>(EMPTY_VALUES);
   const draftId = isNew ? "new" : id!;
-  const values: FormValues = { title, categoryId, venueId, description, hostedBy, directions, startsAt, endsAt, isFree, tickets, addingVenue, newVenue };
+  const values: FormValues = { title, categoryId, programmeSlug, venueId, description, hostedBy, directions, startsAt, endsAt, isFree, tickets, addingVenue, newVenue };
   const valuesJson = JSON.stringify(values);
 
   function applyValues(v: FormValues) {
     setTitle(v.title);
     setCategoryId(v.categoryId);
+    setProgrammeSlug(v.programmeSlug ?? "");
     setVenueId(v.venueId);
     setDescription(v.description);
     setHostedBy(v.hostedBy);
@@ -176,6 +180,7 @@ export function OrganiserEventFormPage() {
       const dbValues: FormValues = {
         title: event.title,
         categoryId: event.category_id,
+        programmeSlug: event.programme_slug ?? "",
         venueId: event.venue_id,
         description: event.description ?? "",
         hostedBy: event.hosted_by ?? "",
@@ -294,6 +299,7 @@ export function OrganiserEventFormPage() {
     const payload = {
       organisation_id: membership.organisation_id,
       category_id: categoryId,
+      programme_slug: programmeSlug || null,
       venue_id: finalVenueId,
       title,
       description,
@@ -438,6 +444,15 @@ export function OrganiserEventFormPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="event-programme" className="mb-1 block text-sm font-medium text-ink dark:text-ink-dark">Programme tag (optional)</label>
+          <Select id="event-programme" value={programmeSlug} onChange={(event) => setProgrammeSlug(event.target.value)}>
+            <option value="">No programme tag</option>
+            <option value={MCK_PROGRAMME_SLUG}>Miss Corporate Kenya</option>
+          </Select>
+          <p className="mt-1 text-xs text-ink-faint">Choose this only for an event formally associated with Miss Corporate Kenya. Tagged published events appear in the MCK event filter.</p>
         </div>
 
         <div>

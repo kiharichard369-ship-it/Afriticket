@@ -54,6 +54,9 @@ export class FixtureEventsRepository implements EventsRepository {
           e.category.name.toLowerCase().includes(q)
       );
     }
+    if (filters.programmeSlug) {
+      items = items.filter((event) => event.programmeSlug === filters.programmeSlug);
+    }
     if (filters.categorySlug) {
       items = items.filter((e) => e.category.slug === filters.categorySlug);
     }

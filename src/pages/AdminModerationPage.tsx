@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { jsPDF } from "jspdf";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
@@ -405,6 +406,24 @@ export function AdminModerationPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="font-display text-3xl font-semibold text-ink dark:text-ink-dark">Moderation queue</h1>
+      <Card className="mt-4 flex flex-wrap items-center justify-between gap-4 border-[#7b2144]/20 p-4 dark:border-[#cf8ca7]/25">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink dark:text-ink-dark">Corporate partnership enquiries</h2>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Review private Miss Corporate Kenya partnership submissions.</p>
+        </div>
+        <Link to="/admin/corporate-enquiries" className="inline-flex h-9 items-center rounded-md bg-[#7b2144] px-3 text-sm font-semibold text-white hover:bg-[#65203a]">
+          Open enquiry queue
+        </Link>
+      </Card>
+      <Card className="mt-3 flex flex-wrap items-center justify-between gap-4 border-[#7b2144]/20 p-4 dark:border-[#cf8ca7]/25">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink dark:text-ink-dark">MCK programme management</h2>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Manage packages, confirmed partner records and MCK event tags.</p>
+        </div>
+        <Link to="/admin/mck" className="inline-flex h-9 items-center rounded-md border border-[#7b2144]/30 px-3 text-sm font-semibold text-[#7b2144] hover:bg-[#7b2144]/5 dark:border-[#cf8ca7]/30 dark:text-[#f1c8d7]">
+          Manage programme
+        </Link>
+      </Card>
       <Card className="mt-6 overflow-hidden p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

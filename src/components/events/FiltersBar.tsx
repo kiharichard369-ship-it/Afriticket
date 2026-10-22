@@ -6,6 +6,9 @@ import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { Button } from "../ui/Button";
 import { categoryVisual } from "./categoryVisual";
+import { MCK_PROGRAMME_SLUG } from "../../data/mckPartnershipTiers";
+
+// Location: src/components/events/FiltersBar.tsx
 
 interface FiltersBarProps {
   filters: EventFilters;
@@ -37,7 +40,8 @@ export function FiltersBar({ filters, onChange, onClear, autoFocusSearch }: Filt
   }, [searchDraft]);
 
   const hasActiveFilters =
-    filters.query || filters.categorySlug || filters.town || filters.month || filters.minPriceMinor || filters.maxPriceMinor;
+    filters.query || filters.programmeSlug || filters.categorySlug || filters.town || filters.month || filters.minPriceMinor || filters.maxPriceMinor;
+  const isMckProgrammeActive = filters.programmeSlug === MCK_PROGRAMME_SLUG;
 
   return (
     <div className="space-y-3">
@@ -84,6 +88,25 @@ export function FiltersBar({ filters, onChange, onClear, autoFocusSearch }: Filt
             </button>
           );
         })}
+      </div>
+
+      <div
+        role="group"
+        aria-label="Filter by programme"
+        className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <button
+          type="button"
+          aria-pressed={isMckProgrammeActive}
+          onClick={() => onChange({ programmeSlug: isMckProgrammeActive ? undefined : MCK_PROGRAMME_SLUG })}
+          className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            isMckProgrammeActive
+              ? "border-[#7b2144] bg-[#7b2144] text-white"
+              : "border-[#7b2144]/40 text-[#7b2144] hover:bg-[#7b2144]/5 dark:border-[#cf8ca7]/50 dark:text-[#f1c8d7] dark:hover:bg-[#cf8ca7]/10"
+          }`}
+        >
+          Miss Corporate Kenya
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
