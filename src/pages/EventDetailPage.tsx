@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, MapPin, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Handshake, MapPin, Users } from "lucide-react";
 import { eventsRepository } from "../repositories/eventsRepository";
 import type { EventDetail } from "../types/event";
 import { formatDateRange } from "../lib/date";
@@ -11,6 +11,7 @@ import { Card } from "../components/ui/Card";
 import { Skeleton } from "../components/ui/Skeleton";
 import { EmptyState } from "../components/ui/EmptyState";
 import { CheckoutDialog } from "../components/events/CheckoutDialog";
+import { PartnerWithUsDialog } from "../components/events/PartnerWithUsDialog";
 import { EventImage } from "../components/events/EventImage";
 import { SeoMetadata } from "../components/seo/SeoMetadata";
 
@@ -18,6 +19,12 @@ export function EventDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [event, setEvent] = useState<EventDetail | null | undefined>(undefined);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
+
+  const refreshEvent = useCallback(() => {
+    if (!slug) return;
+    eventsRepository.getEventBySlug(slug).then(setEvent);
+  }, [slug]);
 
   useEffect(() => {
     if (!slug) return;
@@ -147,9 +154,48 @@ export function EventDetailPage() {
             </Button>
           </Card>
         </div>
+
+        {(event.partners?.length ?? 0) > 0 && (
+          <section aria-labelledby="event-partners-heading" className="mt-8 rounded-2xl border border-border-warm bg-paper-raised p-5 dark:border-border-dark dark:bg-surface-dark sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7b2144] dark:text-[#f1c8d7]">With thanks</p>
+            <h2 id="event-partners-heading" className="mt-1 font-display text-2xl font-semibold text-ink dark:text-ink-dark">In partnership with</h2>
+            <div className="mt-4 flex flex-wrap gap-4">
+              {event.partners?.map((partner) => (
+                <article key={partner.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border-warm bg-paper px-4 py-3 dark:border-border-dark dark:bg-paper-dark">
+                  {partner.logoUrl ? <img src={partner.logoUrl} alt={`${partner.partnerName} logo`} className="h-12 w-12 rounded-md object-contain" loading="lazy" /> : <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-md bg-[#7b2144]/10 text-[#7b2144] dark:text-[#f1c8d7]"><Handshake className="h-5 w-5" /></div>}
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-ink dark:text-ink-dark">{partner.partnerName}</h3>
+                    <p className="text-xs text-ink-faint">{partner.category} · {partner.packageName}</p>
+                    <p className="mt-1 max-w-xl text-sm text-ink-soft dark:text-ink-soft-dark">{partner.offeredServices}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mt-6 flex flex-col gap-4 rounded-2xl border border-[#7b2144]/20 bg-[#7b2144]/[0.035] p-5 dark:border-[#cf8ca7]/25 dark:bg-[#7b2144]/10 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7b2144] dark:text-[#f1c8d7]">For businesses and service providers</p>
+            <h2 className="mt-1 font-display text-xl font-semibold text-ink dark:text-ink-dark">Partner with this event</h2>
+            <p className="mt-1 max-w-2xl text-sm text-ink-soft dark:text-ink-soft-dark">Choose an event package, describe the services you can provide, and pay securely with M-Pesa. Your partner listing appears after payment confirmation.</p>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => setPartnerDialogOpen(true)}>
+            <Handshake className="h-4 w-4" aria-hidden="true" /> Partner with us
+          </Button>
+        </section>
       </div>
 
       <CheckoutDialog event={event} open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      {partnerDialogOpen && (
+        <PartnerWithUsDialog
+          eventId={event.id}
+          eventTitle={event.title}
+          open={partnerDialogOpen}
+          onOpenChange={setPartnerDialogOpen}
+          onConfirmed={refreshEvent}
+        />
+      )}
     </article>
   );
 }

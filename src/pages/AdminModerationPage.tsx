@@ -424,6 +424,15 @@ export function AdminModerationPage() {
           Manage programme
         </Link>
       </Card>
+      <Card className="mt-3 flex flex-wrap items-center justify-between gap-4 border-[#7b2144]/20 p-4 dark:border-[#cf8ca7]/25">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink dark:text-ink-dark">Event partnerships</h2>
+          <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Set event-specific service categories and prices, and manage paid partner visibility.</p>
+        </div>
+        <Link to="/admin/event-partnerships" className="inline-flex h-9 items-center rounded-md bg-[#7b2144] px-3 text-sm font-semibold text-white hover:bg-[#65203a]">
+          Manage event offers
+        </Link>
+      </Card>
       <Card className="mt-6 overflow-hidden p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

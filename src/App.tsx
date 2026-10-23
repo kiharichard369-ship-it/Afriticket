@@ -26,6 +26,7 @@ import { AdminModerationPage } from "./pages/AdminModerationPage";
 import { CorporatePartnershipEnquiriesPage } from "./pages/CorporatePartnershipEnquiriesPage";
 import { RequireAuth, RequireOrganiser } from "./components/auth/RouteGuards";
 import { AdminMckProgrammePage } from "./pages/AdminMckProgrammePage";
+import { AdminEventPartnershipsPage } from "./pages/AdminEventPartnershipsPage";
 import { RequirePlatformRole } from "./components/auth/RequirePlatformRole";
 import { RouteSeo } from "./components/seo/RouteSeo";
 import { IdleLogout } from "./components/auth/IdleLogout";
@@ -130,6 +131,16 @@ export default function App() {
               <RequireAuth>
                 <RequirePlatformRole allow={["admin"]}>
                   <AdminMckProgrammePage />
+                </RequirePlatformRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/event-partnerships"
+            element={
+              <RequireAuth>
+                <RequirePlatformRole allow={["admin"]}>
+                  <AdminEventPartnershipsPage />
                 </RequirePlatformRole>
               </RequireAuth>
             }

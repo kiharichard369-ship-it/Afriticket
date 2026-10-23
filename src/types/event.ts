@@ -59,10 +59,22 @@ export interface EventSummary {
   programmeSlug?: string | null;
 }
 
+export interface EventPartner {
+  id: string;
+  partnerName: string;
+  packageName: string;
+  category: string;
+  offeredServices: string;
+  logoUrl?: string;
+  confirmedAt: string | null;
+}
+
 export interface EventDetail extends EventSummary {
   description: string;
   organiserName: string;
   ticketTypes: TicketType[];
+  /** Only server-projected, M-Pesa-confirmed partners are included. */
+  partners?: EventPartner[];
   ageLimit?: string;
   accessibilityNotes?: string;
   refundPolicySummary?: string;

@@ -29,6 +29,11 @@ export interface SaveMckPartnerInput {
   sortOrder: number;
 }
 
+export interface MckAdminEventPage {
+  items: MckAdminEventRow[];
+  totalItems: number;
+}
+
 function db() {
   if (!supabase) throw new Error("Supabase is not configured.");
   return supabase;
@@ -103,10 +108,37 @@ export async function saveMckPartner(input: SaveMckPartnerInput): Promise<string
   return data as string;
 }
 
-export async function listMckAdminEvents(): Promise<MckAdminEventRow[]> {
-  const { data, error } = await db().rpc("admin_list_mck_events");
+export async function listMckAdminEvents(page = 1, pageSize = 25, query = ""): Promise<MckAdminEventPage> {
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  const { data, error } = await db().rpc("admin_list_mck_events_page", {
+    p_limit: safePageSize,
+    p_offset: (safePage - 1) * safePageSize,
+    p_query: query.trim() || null,
+  });
   if (error) throw error;
-  return (data ?? []) as MckAdminEventRow[];
+  let rows = (data ?? []) as Array<MckAdminEventRow & { total_count: number }>;
+  if (rows.length === 0 && safePage > 1) {
+    const { data: countData, error: countError } = await db().rpc("admin_list_mck_events_page", {
+      p_limit: 1,
+      p_offset: 0,
+      p_query: query.trim() || null,
+    });
+    if (countError) throw countError;
+    rows = (countData ?? []) as Array<MckAdminEventRow & { total_count: number }>;
+    return { items: [], totalItems: rows[0]?.total_count ?? 0 };
+  }
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      status: row.status,
+      starts_at: row.starts_at,
+      programme_slug: row.programme_slug,
+    })),
+    totalItems: rows[0]?.total_count ?? 0,
+  };
 }
 
 export async function setMckEventTag(eventId: string, programmeSlug: string | null): Promise<void> {

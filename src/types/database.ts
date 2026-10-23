@@ -72,6 +72,11 @@ export interface EventPublicRow {
   programme_slug: string | null;
 }
 
+// Location: src/types/database.ts — row returned by events_public_priced (migration 0029).
+export interface EventPublicPricedRow extends EventPublicRow {
+  price_from_minor: number | null;
+}
+
 export interface TicketTypePublicRow {
   id: string;
   event_id: string;
@@ -184,6 +189,61 @@ export interface MckAdminEventRow {
   status: string;
   starts_at: string;
   programme_slug: string | null;
+}
+
+export interface EventPartnershipPublicPackageRow {
+  id: string;
+  event_id: string;
+  category: string;
+  name: string;
+  service_description: string;
+  price_kes: number;
+  sort_order: number;
+}
+
+export interface EventPartnershipPublicPartnerRow {
+  id: string;
+  event_id: string;
+  partner_name: string;
+  package_name: string;
+  category: string;
+  offered_services: string;
+  logo_path: string | null;
+  confirmed_at: string | null;
+}
+
+export interface EventPartnershipPackageRow extends EventPartnershipPublicPackageRow {
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventPartnershipAdminEventRow {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  starts_at: string;
+}
+
+export interface EventPartnershipAdminApplicationRow {
+  id: string;
+  event_id: string;
+  event_title: string;
+  public_reference: string;
+  applicant_name: string;
+  business_name: string;
+  contact_email: string;
+  contact_phone: string;
+  category: string;
+  package_name: string;
+  price_kes: number;
+  offered_services: string;
+  logo_path: string | null;
+  status: "awaiting_payment" | "paid" | "cancelled";
+  is_public: boolean;
+  created_at: string;
+  confirmed_at: string | null;
 }
 
 export interface OrganiserApplicationRow {

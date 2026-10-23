@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Save } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -18,6 +18,8 @@ const statusLabels: Record<PartnershipEnquiryStatus, string> = {
   spam: "Spam",
 };
 
+const PAGE_SIZE = 20;
+
 function partnershipLabel(row: CorporatePartnershipEnquiryRow): string {
   if (row.partnership_type === "in_kind") return "In-kind support";
   if (row.tier_name_snapshot) {
@@ -32,6 +34,8 @@ export function CorporatePartnershipEnquiriesPage() {
   const [rows, setRows] = useState<CorporatePartnershipEnquiryRow[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { status: PartnershipEnquiryStatus; adminNotes: string }>>({});
   const [filter, setFilter] = useState<"all" | PartnershipEnquiryStatus>("new");
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -41,12 +45,18 @@ export function CorporatePartnershipEnquiriesPage() {
 
   useEffect(() => {
     let active = true;
-    void listCorporatePartnershipEnquiries()
-      .then((data) => { if (active) setRows(data); })
+    void listCorporatePartnershipEnquiries(filter, page, PAGE_SIZE)
+      .then((data) => {
+        if (!active) return;
+        setRows(data.items);
+        setTotalItems(data.totalItems);
+        const lastPage = Math.max(1, Math.ceil(data.totalItems / PAGE_SIZE));
+        if (page > lastPage) setPage(lastPage);
+      })
       .catch(() => { if (active) setLoadError("Enquiries could not be loaded. Confirm migrations 0027–0028 are applied and this account has the platform-admin role."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [refreshToken]);
+  }, [refreshToken, filter, page]);
 
   function draftFor(row: CorporatePartnershipEnquiryRow) {
     return drafts[row.id] ?? { status: row.status, adminNotes: row.admin_notes ?? "" };
@@ -74,6 +84,8 @@ export function CorporatePartnershipEnquiriesPage() {
         return next;
       });
       setMessage("Enquiry updated.");
+      setLoading(true);
+      setRefreshToken((value) => value + 1);
     } catch {
       setSaveError("The update was not saved. Check the admin role and migrations 0027–0028, then try again.");
     } finally {
@@ -81,7 +93,8 @@ export function CorporatePartnershipEnquiriesPage() {
     }
   }
 
-  const visibleRows = (rows ?? []).filter((row) => filter === "all" || row.status === filter);
+  const visibleRows = rows ?? [];
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
@@ -97,7 +110,12 @@ export function CorporatePartnershipEnquiriesPage() {
         <div className="flex items-end gap-2">
           <div className="min-w-40">
             <label htmlFor="enquiry-status-filter" className="mb-1 block text-xs font-medium text-ink-soft dark:text-ink-soft-dark">Filter status</label>
-            <Select id="enquiry-status-filter" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>
+            <Select id="enquiry-status-filter" value={filter} onChange={(event) => {
+              setLoadError(null);
+              setLoading(true);
+              setPage(1);
+              setFilter(event.target.value as typeof filter);
+            }}>
               <option value="new">New</option>
               <option value="all">All statuses</option>
               {partnershipStatuses.filter((status) => status !== "new").map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
@@ -150,7 +168,19 @@ export function CorporatePartnershipEnquiriesPage() {
           );
         })}
       </div>
-      <p className="mt-6 text-xs leading-relaxed text-ink-faint dark:text-ink-soft-dark">The queue loads the latest 100 submissions. No sponsor account or public enquiry record is exposed.</p>
+      {totalItems > 0 && <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border-warm pt-4 dark:border-border-dark">
+        <p className="text-xs text-ink-faint" aria-live="polite">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalItems)} of {totalItems} enquiries</p>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={loading || page <= 1} onClick={() => { setLoading(true); setPage((current) => Math.max(1, current - 1)); }}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Previous
+          </Button>
+          <span className="text-xs text-ink-faint">Page {page} of {totalPages}</span>
+          <Button type="button" variant="outline" size="sm" disabled={loading || page >= totalPages} onClick={() => { setLoading(true); setPage((current) => current + 1); }}>
+            Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </div>}
+      <p className="mt-6 text-xs leading-relaxed text-ink-faint dark:text-ink-soft-dark">The private queue is paginated by submission date. No sponsor account or public enquiry record is exposed.</p>
     </div>
   );
 }

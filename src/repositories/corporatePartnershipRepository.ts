@@ -61,16 +61,28 @@ export async function submitCorporatePartnershipEnquiry(input: NewCorporatePartn
   if (error) throw error;
 }
 
-export async function listCorporatePartnershipEnquiries(): Promise<CorporatePartnershipEnquiryRow[]> {
+export async function listCorporatePartnershipEnquiries(
+  status: "all" | PartnershipEnquiryStatus,
+  page = 1,
+  pageSize = 20,
+): Promise<{ items: CorporatePartnershipEnquiryRow[]; totalItems: number }> {
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const { data, error } = await supabase
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  let query = supabase
     .from("corporate_partnership_enquiries")
-    .select("id, organisation_name, contact_email, partnership_type, tier_key, tier_name_snapshot, tier_price_snapshot, message, consent_to_contact, status, admin_notes, reviewed_by, reviewed_at, created_at, updated_at")
+    .select("id, organisation_name, contact_email, partnership_type, tier_key, tier_name_snapshot, tier_price_snapshot, message, consent_to_contact, status, admin_notes, reviewed_by, reviewed_at, created_at, updated_at", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(100);
+    .order("id", { ascending: false });
+  if (status !== "all") query = query.eq("status", status);
+  const first = (safePage - 1) * safePageSize;
+  const { data, error, count } = await query.range(first, first + safePageSize - 1);
   if (error) throw error;
-  return (data as CorporatePartnershipEnquiryRow[] | null) ?? [];
+  return {
+    items: (data as CorporatePartnershipEnquiryRow[] | null) ?? [],
+    totalItems: count ?? 0,
+  };
 }
 
 export async function updateCorporatePartnershipEnquiry(

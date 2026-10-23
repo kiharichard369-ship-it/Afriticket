@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { eventsRepository } from "../repositories/eventsRepository";
 import type { EventFilters, EventSummary, Paginated } from "../types/event";
@@ -28,35 +28,41 @@ export function useEventDiscovery() {
   const [result, setResult] = useState<Paginated<EventSummary> | null>(null);
   const [accumulated, setAccumulated] = useState<EventSummary[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "loading-more" | "error" | "ready">("idle");
+  const requestSequence = useRef(0);
+  const filterKey = JSON.stringify(filters);
 
-  const load = useCallback(
-    async (targetPage: number, replace: boolean) => {
-      setStatus(targetPage === 1 ? "loading" : "loading-more");
-      try {
-        const data = await eventsRepository.listEvents({ ...filters, page: targetPage, pageSize: PAGE_SIZE });
-        setResult(data);
-        setAccumulated((prev) => (replace ? data.items : [...prev, ...data.items]));
-        setStatus("ready");
-      } catch {
-        setStatus("error");
-      }
-    },
-    // filters is re-created each render from searchParams, so depend on its serialized form
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(filters)]
-  );
+  const load = useCallback(async (targetPage: number, replace: boolean) => {
+    const requestId = ++requestSequence.current;
+    setStatus(targetPage === 1 ? "loading" : "loading-more");
+    try {
+      const data = await eventsRepository.listEvents({ ...filters, page: targetPage, pageSize: PAGE_SIZE });
+      if (requestId !== requestSequence.current) return;
+      setResult(data);
+      setAccumulated((previous) => (replace ? data.items : [...previous, ...data.items]));
+      if (!replace) setPage(targetPage);
+      setStatus("ready");
+    } catch {
+      if (requestId !== requestSequence.current) return;
+      setStatus("error");
+    }
+  // `filterKey` intentionally serializes the URL-derived filter values.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
 
   useEffect(() => {
     setPage(1);
-    load(1, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(filters)]);
+    void load(1, true);
+    return () => {
+      // Invalidate in-flight requests on filter changes and unmount.
+      requestSequence.current += 1;
+    };
+  }, [load]);
 
   const loadMore = useCallback(() => {
+    if (status === "loading" || status === "loading-more" || !result || page >= result.totalPages) return;
     const next = page + 1;
-    setPage(next);
-    load(next, false);
-  }, [page, load]);
+    void load(next, false);
+  }, [page, load, result, status]);
 
   const updateFilters = useCallback(
     (patch: Partial<EventFilters>) => {
